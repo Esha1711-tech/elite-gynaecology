@@ -1,0 +1,27 @@
+ELITE GYNAECOLOGY LAHORE - QUICK START
+
+1) Make sure MongoDB is running locally.
+
+2) Backend:
+   cd backend
+   npm install
+   npm run seed
+   npm run dev
+
+3) Frontend (new terminal):
+   cd frontend
+   npm install
+   npm run dev
+
+4) Open:
+   http://localhost:5173
+
+DEFAULT DOCTOR LOGIN
+Email: doctor@elitegynaecology.com
+Password: REMOVED_OLD_PASSWORD
+Login As: Doctor
+
+The project uses local MongoDB:
+mongodb://localhost:27017/elite_gynaecology
+
+If you want Gmail notifications, replace EMAIL_USER and EMAIL_PASS in backend/.env with your Gmail address and App Password.
