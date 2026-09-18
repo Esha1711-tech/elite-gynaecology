@@ -36,3 +36,189 @@
     @apply inline-flex items-center gap-2 rounded-full bg-secondary-sage px-4 py-1.5 text-sm font-semibold text-accent-sage;
   }
 }
+
+/* Garden OB/GYN inspired theme overrides for Elite Gynaecology
+   Add this block at the END of frontend/src/index.css
+*/
+
+:root {
+  --elite-rose: #CF3650;
+  --elite-rose-dark: #7A2033;
+  --elite-rose-soft: #FFF1F4;
+  --elite-blush: #FFF7F8;
+  --elite-peach: #FFF3E6;
+  --elite-orange: #F5A900;
+  --elite-text: #4B5563;
+  --elite-muted: #6B7280;
+  --elite-border: #F3D8DE;
+  --elite-white: #FFFFFF;
+}
+
+/* ---------- EXISTING PROJECT COLOR TOKENS ---------- */
+.text-accent-navy { color: var(--elite-rose-dark) !important; }
+.text-accent-sage { color: var(--elite-rose) !important; }
+.text-text-light { color: var(--elite-muted) !important; }
+
+.bg-accent-navy { background-color: var(--elite-rose) !important; }
+.bg-accent-sage { background-color: #D85A70 !important; }
+.bg-primary-light { background-color: var(--elite-blush) !important; }
+.bg-secondary-pink { background-color: #FFE6EC !important; }
+.bg-secondary-sage { background-color: var(--elite-peach) !important; }
+
+.border-secondary-sage { border-color: var(--elite-border) !important; }
+
+.hover\:bg-secondary-pink:hover { background-color: #FFD7E0 !important; }
+.hover\:bg-secondary-sage:hover { background-color: #FFE6C8 !important; }
+
+/* opacity variants already used in dashboard */
+.bg-secondary-pink\/50 { background-color: rgba(255, 230, 236, 0.72) !important; }
+.bg-secondary-sage\/40 { background-color: rgba(255, 243, 230, 0.82) !important; }
+.text-accent-navy\/50 { color: rgba(122, 32, 51, 0.55) !important; }
+
+/* ---------- SHARED COMPONENT CLASSES ---------- */
+.card {
+  background: #fff !important;
+  border: 1px solid var(--elite-border) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 10px 30px rgba(122, 32, 51, 0.07) !important;
+}
+
+.input-field {
+  width: 100%;
+  background: #fff !important;
+  color: #374151 !important;
+  border: 1px solid #EFCBD3 !important;
+  border-radius: 12px !important;
+  transition: border-color .2s ease, box-shadow .2s ease !important;
+}
+
+.input-field:focus {
+  outline: none !important;
+  border-color: var(--elite-rose) !important;
+  box-shadow: 0 0 0 3px rgba(207, 54, 80, 0.12) !important;
+}
+
+.btn-primary {
+  background: var(--elite-rose) !important;
+  color: #fff !important;
+  border: 1px solid var(--elite-rose) !important;
+  border-radius: 12px !important;
+  transition: all .2s ease !important;
+}
+
+.btn-primary:hover {
+  background: #B92F48 !important;
+  border-color: #B92F48 !important;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: #fff !important;
+  color: var(--elite-rose) !important;
+  border: 1px solid #EFB9C4 !important;
+  border-radius: 12px !important;
+}
+
+.btn-secondary:hover {
+  background: var(--elite-rose-soft) !important;
+}
+
+/* ---------- AUTH + DASHBOARD FORM ELEMENTS ---------- */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  accent-color: var(--elite-rose);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--elite-rose);
+}
+
+/* Selection + scrollbar details */
+::selection {
+  background: #FFD7E0;
+  color: var(--elite-rose-dark);
+}
+
+/* ---------- OPTIONAL HELPER CLASSES FOR NEW/UPDATED PAGES ---------- */
+.elite-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #FFF7F8 0%, #FFFFFF 48%, #FFF9FA 100%);
+  color: var(--elite-text);
+}
+
+.elite-page-title {
+  color: var(--elite-rose-dark);
+}
+
+.elite-section-label {
+  color: var(--elite-rose);
+}
+
+.elite-soft-panel {
+  background: var(--elite-rose-soft);
+  border: 1px solid var(--elite-border);
+}
+/* =========================================
+   GLOBAL BOOK APPOINTMENT BUTTON
+   ========================================= */
+
+@keyframes appointmentPulse {
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(207, 54, 80, 0.60),
+      0 6px 18px rgba(207, 54, 80, 0.22);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 12px rgba(207, 54, 80, 0.18),
+      0 8px 25px rgba(207, 54, 80, 0.28);
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 22px rgba(207, 54, 80, 0),
+      0 6px 18px rgba(207, 54, 80, 0.22);
+  }
+}
+
+.appointment-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  background: #cf3650;
+  color: #ffffff;
+
+  padding: 12px 24px;
+
+  /* Proper pill shape */
+  border-radius: 9999px;
+
+  font-weight: 700;
+
+  animation: appointmentPulse 1.8s ease-out infinite;
+
+  transition:
+    background-color 0.3s ease,
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.appointment-btn:hover {
+  background: #b92f48;
+  color: #ffffff;
+
+  transform: translateY(-2px) scale(1.03);
+
+  box-shadow:
+    0 0 0 10px rgba(207, 54, 80, 0.12),
+    0 10px 30px rgba(207, 54, 80, 0.35);
+}
+
+.appointment-btn:active {
+  transform: translateY(0) scale(0.98);
+}

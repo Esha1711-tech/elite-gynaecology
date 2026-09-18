@@ -1,131 +1,126 @@
 import { Link } from "react-router-dom";
 import {
-  Clock3,
   Facebook,
   Instagram,
-  Mail,
+  Youtube,
+  Linkedin,
   MapPin,
   Phone,
-  ShieldCheck,
+  Mail,
+  Clock,
+  ArrowRight,
 } from "lucide-react";
 
 const Footer = () => {
   return (
-    <footer className="mt-16 bg-accent-navy text-white">
-      <div className="h-1 bg-gradient-to-r from-accent-sage via-accent-rose to-accent-sage" />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
+    <footer className="bg-white text-gray-600 border-t border-[#F3D8DE]">
+      <div className="border-b border-[#F3D8DE] bg-[#FFF7F8]">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-6 sm:px-6 md:flex-row lg:px-8">
           <div>
-            <Link to="/" className="inline-flex items-center mb-5">
-              <img
-                src="/logo.png"
-                alt="Elite Gynaecology Lahore"
-                className="h-16 w-auto object-contain"
-              />
-            </Link>
-            <p className="text-slate-300 text-sm leading-6 max-w-sm">
-              Compassionate, patient-first women&apos;s healthcare with trusted
-              gynaecological consultations and modern appointment management.
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#B92F48]">
+              Elite Gynaecology Lahore
             </p>
-            <div className="flex gap-3 mt-5">
+            <h3 className="mt-1 text-2xl font-bold text-[#7A2033]">Professional care for every stage of womanhood.</h3>
+          </div>
+          <Link
+            to="/register"
+            className="appointment-btn"
+          >
+            Book Appointment <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </div>
+
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-8">
+        <div>
+          <img src="/logo.png" alt="Elite Gynaecology" className="h-16 w-auto rounded-lg bg-white p-2" />
+          <p className="mt-4 max-w-sm text-sm leading-6 text-gray-600">
+            Compassionate and professional gynaecological care with a focus on privacy, comfort and personalized attention.
+          </p>
+          <div className="mt-5 flex gap-3">
+            {[
+              [Facebook, "https://facebook.com", "Facebook"],
+              [Instagram, "https://instagram.com", "Instagram"],
+              [Youtube, "https://youtube.com", "YouTube"],
+              [Linkedin, "https://linkedin.com", "LinkedIn"],
+            ].map(([Icon, href, label]) => (
               <a
-                href="#"
-                aria-label="Facebook"
-                className="h-9 w-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-accent-rose transition"
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={label}
+                className=" flex h-10 w-10 items-center justify-center
+  rounded-full
+  border border-[#F0D8DD]
+  bg-[#FFF7F8]
+  text-[#6E1F32]
+  transition-all duration-300
+  hover:bg-[#CF3650]
+  hover:text-[#FFD1D9]
+  hover:border-[#CF3650]
+  hover:-translate-y-1
+  hover:shadow-md"
               >
-                <Facebook className="h-4 w-4" />
+                <Icon className="h-4 w-4" />
               </a>
-              <a
-                href="#"
-                aria-label="Instagram"
-                className="h-9 w-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-accent-rose transition"
-              >
-                <Instagram className="h-4 w-4" />
-              </a>
-            </div>
+            ))}
           </div>
+        </div>
 
-          <div>
-            <h3 className="font-semibold text-lg mb-5">Quick Links</h3>
-            <div className="space-y-3 text-sm text-slate-300">
-              <Link className="block hover:text-accent-rose transition" to="/">
-                Home
-              </Link>
-              <Link
-                className="block hover:text-accent-rose transition"
-                to="/blog"
-              >
-                Health Blog
-              </Link>
-              <Link
-                className="block hover:text-accent-rose transition"
-                to="/appointments"
-              >
-                Appointments
-              </Link>
-              <Link
-                className="block hover:text-accent-rose transition"
-                to="/login"
-              >
-                Login
-              </Link>
-              <Link
-                className="block hover:text-accent-rose transition"
-                to="/register"
-              >
-                Create Account
-              </Link>
-            </div>
+        <div>
+          <h4 className="text-lg font-bold text-[#B92F48]">Quick Links</h4>
+          <div className="mt-4 space-y-3 text-sm text-gray-600">
+            <Link className="block hover:text-[#CF3650]" to="/#home">Home</Link>
+            <Link className="block hover:text-[#CF3650]" to="/#about">About</Link>
+            <Link className="block hover:text-[#CF3650]" to="/#services">Services</Link>
+            <Link className="block hover:text-[#CF3650]" to="/#doctor">Doctor</Link>
+            <Link className="block hover:text-[#CF3650]" to="/#contact">Contact</Link>
+            <Link className="block text-gray-600 transition hover:text-[#CF3650]"to="/blog">Health Blog </Link>
           </div>
+        </div>
 
-          <div>
-            <h3 className="font-semibold text-lg mb-5">Contact Us</h3>
-            <div className="space-y-4 text-sm text-slate-300">
-              <div className="flex gap-3">
-                <MapPin className="h-5 w-5 shrink-0 text-accent-sage" />
-                <span>123-M, Gulberg III, Lahore, Pakistan</span>
-              </div>
-              <div className="flex gap-3">
-                <Phone className="h-5 w-5 shrink-0 text-accent-sage" />
-                <span>+92 318 0082848</span>
-              </div>
-              <div className="flex gap-3">
-                <Mail className="h-5 w-5 shrink-0 text-accent-sage" />
-                <span>doctorambreenakhtar@gmail.com</span>
-              </div>
-            </div>
+        <div>
+          <h4 className="text-lg font-bold text-[#B92F48]">Popular Services</h4>
+          <div className="mt-4 space-y-3 text-sm text-gray-600">
+            <Link className="block hover:text-[#CF3650]" to="/services/pregnancy-antenatal-care">Pregnancy & Antenatal Care</Link>
+            <Link className="block hover:text-[#CF3650]" to="/services/high-risk-pregnancy">High-Risk Pregnancy</Link>
+            <Link className="block hover:text-[#CF3650]" to="/services/pcos-menstrual-disorders">PCOS Management</Link>
+            <Link className="block hover:text-[#CF3650]" to="/services/gynecological-surgeries">Gynaecological Surgeries</Link>
           </div>
+        </div>
 
-          <div>
-            <h3 className="font-semibold text-lg mb-5">Clinic Hours</h3>
-            <div className="space-y-4 text-sm text-slate-300">
-              <div className="flex gap-3">
-                <Clock3 className="h-5 w-5 shrink-0 text-accent-sage" />
-                <span>
-                  Monday – Saturday
-                  <br />
-                  9:00 AM – 6:00 PM
-                </span>
-              </div>
-              <div className="flex gap-3">
-                <ShieldCheck className="h-5 w-5 shrink-0 text-accent-sage" />
-                <span>Private &amp; secure patient records</span>
-              </div>
-            </div>
-            <Link
-              to="/appointments"
-              className="inline-flex mt-6 rounded-lg bg-accent-rose px-5 py-2.5 text-sm font-semibold hover:bg-white hover:text-accent-navy transition"
-            >
-              Book Appointment
-            </Link>
+        <div>
+          <h4 className="text-lg font-bold text-[#B92F48]">Contact</h4>
+          <div className="mt-4 space-y-4 text-sm text-gray-600">
+            <div className="flex gap-3"><MapPin className="mt-0.5 h-5 w-5 shrink-0 text-[#CF3650]" /><span>8-2, Gulberg Complex, Jail Rd, Gulberg V, Lahore, Pakistan</span></div>
+            <a href="https://wa.me/923180082848" target="_blank" rel="noopener noreferrer" className="flex gap-3 hover:text-[#CF3650]"><Phone className="h-5 w-5 shrink-0 text-[#CF3650]" /><span>+92 318 0082848</span></a>
+            <a href="mailto:doctorambreenakhtar@gmail.com" className="flex gap-3 break-all hover:text-[#CF3650]"><Mail className="h-5 w-5 shrink-0 text-[#CF3650]" /><span>doctorambreenakhtar@gmail.com</span></a>
+            <div className="flex gap-3"><Clock className="h-5 w-5 shrink-0 text-[#CF3650]" /><span>Monday - Saturday</span></div>
           </div>
         </div>
       </div>
-      <div className="border-t border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row justify-between gap-2 text-xs text-slate-400">
-          <span>© 2026 Elite Gynaecology Lahore. All rights reserved.</span>
-          <span>Compassionate care. Trusted expertise. Better outcomes.</span>
-        </div>
+
+      <div className="border-t border-[#F3D8DE] bg-[#FFF7F8]">
+         <div className="mx-auto max-w-4xl px-4 py-6 text-center sm:px-6">
+    
+    {/* <p className="mx-auto max-w-3xl text-sm leading-6 text-gray-500">
+      The information and tools on this website are for general educational
+     purposes only and are not a substitute for professional medical advice, 
+     diagnosis, or treatment. Always consult your physician or a qualified provider
+      with any questions about your health, and never disregard or delay seeking 
+      medical advice because of something you read here. In an emergency, call your 
+      respective medical helpline. Read our full medical disclaimer.
+ 
+    </p> */}
+
+    <div className="mx-auto my-4 h-px w-20 bg-[#F3D8DE]" />
+
+    <p className="text-xs font-medium text-gray-500">
+      © {new Date().getFullYear()} Elite Gynaecology. All rights reserved.
+    </p>
+
+  </div>
       </div>
     </footer>
   );

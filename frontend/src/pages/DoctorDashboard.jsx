@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import RichTextEditor from "../components/RichTextEditor";
+import { validateUploadFile } from "../utils/fileValidation";
+import { openSecureFile } from "../utils/openSecureFile";
 import {
   Users,
   Calendar,
@@ -16,15 +19,18 @@ import {
   Trash2,
   Eye,
   EyeOff,
+  Settings,
+  Palette,
+  Save,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../utils/api";
 
-const API_ORIGIN =
-  import.meta.env.VITE_API_ORIGIN || "http://localhost:5000";
+// const API_ORIGIN =
+//   import.meta.env.VITE_API_ORIGIN || "http://localhost:5000";
 
-const fileUrl = (url) =>
-  url?.startsWith("http") ? url : `${API_ORIGIN}${url}`;
+// const fileUrl = (url) =>
+//   url?.startsWith("http") ? url : `${API_ORIGIN}${url}`;
 
 const emptyPrescription = {
   diagnosis: "",
@@ -83,13 +89,97 @@ const DoctorDashboard = () => {
   const [showBlogForm, setShowBlogForm] = useState(false);
   const [editingBlogId, setEditingBlogId] = useState(null);
   const [blogForm, setBlogForm] = useState(emptyBlog);
+  const [blogPage, setBlogPage] = useState(1);
+  const [blogPagination, setBlogPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalBlogs: 0,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  });
+  const [patientPage, setPatientPage] = useState(1);
+
+const [patientPagination, setPatientPagination] = useState({
+  currentPage: 1,
+  totalPages: 1,
+  totalPatients: 0,
+  hasNextPage: false,
+  hasPreviousPage: false,
+});
+
+  const [appointmentPage, setAppointmentPage] = useState(1);
+  const [appointmentData, setAppointmentData] = useState([]);
+  const [appointmentPagination, setAppointmentPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalAppointments: 0,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  });
+  const blogFormRef = useRef(null);
   const [blogSaving, setBlogSaving] = useState(false);
+
+  // =========================
+  // WEBSITE MANAGEMENT STATES
+  // =========================
+  const [websiteSettings, setWebsiteSettings] = useState(null);
+  const [websiteLoading, setWebsiteLoading] = useState(false);
+  const [websiteSaving, setWebsiteSaving] = useState(false);
+
 
   useEffect(() => {
     fetchDashboard();
-    fetchPatients();
-    fetchBlogs();
+    fetchAppointments(1);
+    fetchBlogs(1);
+    fetchWebsiteSettings();
   }, []);
+
+  useEffect(() => {
+    if (!showBlogForm) return;
+
+    const timer = setTimeout(() => {
+      if (!blogFormRef.current) return;
+
+      const top =
+        blogFormRef.current.getBoundingClientRect().top +
+        window.scrollY -
+        100;
+
+      window.scrollTo({
+        top,
+        behavior: "smooth",
+      });
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [showBlogForm, editingBlogId]);
+
+ useEffect(() => {
+  const timer = setTimeout(() => {
+    setPatientPage(1);
+    fetchPatients(search, 1);
+  }, 400);
+
+  return () => clearTimeout(timer);
+}, [search]);
+
+useEffect(() => {
+  if (patientPage === 1) return;
+
+  fetchPatients(search, patientPage);
+}, [patientPage]);
+
+  useEffect(() => {
+    if (appointmentPage === 1) return;
+
+    fetchAppointments(appointmentPage);
+  }, [appointmentPage]);
+
+  useEffect(() => {
+    if (blogPage === 1) return;
+
+    fetchBlogs(blogPage);
+  }, [blogPage]);
 
   // =========================
   // DASHBOARD
@@ -102,26 +192,72 @@ const DoctorDashboard = () => {
     } catch (err) {
       toast.error(
         err.response?.data?.message ||
-          "Unable to load doctor dashboard.",
+        "Unable to load doctor dashboard.",
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchPatients = async (term = "") => {
+const fetchPatients = async (term = "", page = 1) => {
+  try {
+    const params = new URLSearchParams();
+
+    params.set("page", page);
+    params.set("limit", 10);
+
+    if (term.trim()) {
+      params.set("search", term.trim());
+    }
+
+    const res = await api.get(
+      `/patients?${params.toString()}`
+    );
+
+    setPatients(res.data.patients || []);
+
+    setPatientPagination(
+      res.data.pagination || {
+        currentPage: 1,
+        totalPages: 1,
+        totalPatients: 0,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      }
+    );
+  } catch (err) {
+    console.error(err);
+
+    toast.error(
+      err.response?.data?.message ||
+        "Unable to load patients."
+    );
+  }
+};
+
+  const fetchAppointments = async (page = 1) => {
     try {
       const res = await api.get(
-        `/patients${
-          term
-            ? `?search=${encodeURIComponent(term)}`
-            : ""
-        }`,
+        `/reports/appointments?page=${page}&limit=10`,
       );
 
-      setPatients(res.data.patients || []);
+      setAppointmentData(res.data.appointments || []);
+
+      setAppointmentPagination(
+        res.data.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalAppointments: 0,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        },
+      );
     } catch (err) {
       console.error(err);
+      toast.error(
+        err.response?.data?.message ||
+          "Unable to load appointments.",
+      );
     }
   };
 
@@ -138,7 +274,7 @@ const DoctorDashboard = () => {
     } catch (err) {
       toast.error(
         err.response?.data?.message ||
-          "Unable to load patient history.",
+        "Unable to load patient history.",
       );
     } finally {
       setHistoryLoading(false);
@@ -158,6 +294,7 @@ const DoctorDashboard = () => {
       );
 
       fetchDashboard();
+      fetchAppointments(appointmentPage);
 
       if (selectedPatient) {
         openPatient(selectedPatient);
@@ -165,7 +302,7 @@ const DoctorDashboard = () => {
     } catch (err) {
       toast.error(
         err.response?.data?.message ||
-          "Payment update failed.",
+        "Payment update failed.",
       );
     }
   };
@@ -179,6 +316,7 @@ const DoctorDashboard = () => {
       toast.success(`Appointment ${status}.`);
 
       fetchDashboard();
+      fetchAppointments(appointmentPage);
 
       if (selectedPatient) {
         openPatient(selectedPatient);
@@ -186,7 +324,7 @@ const DoctorDashboard = () => {
     } catch (err) {
       toast.error(
         err.response?.data?.message ||
-          "Appointment update failed.",
+        "Appointment update failed.",
       );
     }
   };
@@ -253,7 +391,7 @@ const DoctorDashboard = () => {
     } catch (err) {
       toast.error(
         err.response?.data?.message ||
-          "Unable to save prescription.",
+        "Unable to save prescription.",
       );
     }
   };
@@ -300,7 +438,7 @@ const DoctorDashboard = () => {
     } catch (err) {
       toast.error(
         err.response?.data?.message ||
-          "Report upload failed.",
+        "Report upload failed.",
       );
     }
   };
@@ -309,17 +447,29 @@ const DoctorDashboard = () => {
   // BLOG MANAGEMENT
   // =====================================================
 
-  const fetchBlogs = async () => {
+  const fetchBlogs = async (page = 1) => {
     setBlogLoading(true);
 
     try {
-      const res = await api.get("/blog/my/blogs");
+      const res = await api.get(
+        `/blog/my/blogs?page=${page}&limit=6`,
+      );
 
       setBlogs(res.data.blogs || []);
+
+      setBlogPagination(
+        res.data.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalBlogs: 0,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        },
+      );
     } catch (err) {
       toast.error(
         err.response?.data?.message ||
-          "Unable to load your blogs.",
+        "Unable to load your blogs.",
       );
     } finally {
       setBlogLoading(false);
@@ -343,15 +493,8 @@ const DoctorDashboard = () => {
 
   const startCreateBlog = () => {
     setEditingBlogId(null);
-
     setBlogForm(emptyBlog);
-
     setShowBlogForm(true);
-
-    window.scrollTo({
-      top: document.body.scrollHeight,
-      behavior: "smooth",
-    });
   };
 
   const startEditBlog = (blog) => {
@@ -366,16 +509,10 @@ const DoctorDashboard = () => {
         ? blog.tags.join(", ")
         : "",
       featuredImage: blog.featuredImage || "",
-      isPublished:
-        blog.isPublished !== false,
+      isPublished: blog.isPublished !== false,
     });
 
     setShowBlogForm(true);
-
-    window.scrollTo({
-      top: document.body.scrollHeight,
-      behavior: "smooth",
-    });
   };
 
   const saveBlog = async (e) => {
@@ -424,11 +561,16 @@ const DoctorDashboard = () => {
       }
 
       resetBlogForm();
-      fetchBlogs();
+
+      if (blogPage === 1) {
+        fetchBlogs(1);
+      } else {
+        setBlogPage(1);
+      }
     } catch (err) {
       toast.error(
         err.response?.data?.message ||
-          "Unable to save blog.",
+        "Unable to save blog.",
       );
     } finally {
       setBlogSaving(false);
@@ -451,11 +593,15 @@ const DoctorDashboard = () => {
         resetBlogForm();
       }
 
-      fetchBlogs();
+      if (blogs.length === 1 && blogPage > 1) {
+        setBlogPage((page) => page - 1);
+      } else {
+        fetchBlogs(blogPage);
+      }
     } catch (err) {
       toast.error(
         err.response?.data?.message ||
-          "Unable to delete blog.",
+        "Unable to delete blog.",
       );
     }
   };
@@ -472,12 +618,116 @@ const DoctorDashboard = () => {
           : "Blog published.",
       );
 
-      fetchBlogs();
+      fetchBlogs(blogPage);
     } catch (err) {
       toast.error(
         err.response?.data?.message ||
-          "Unable to update blog status.",
+        "Unable to update blog status.",
       );
+    }
+  };
+
+
+
+  // =====================================================
+  // WEBSITE MANAGEMENT
+  // =====================================================
+
+  const fetchWebsiteSettings = async () => {
+    setWebsiteLoading(true);
+    try {
+      const res = await api.get("/website-settings");
+      setWebsiteSettings(res.data.settings || null);
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message || "Unable to load website settings.",
+      );
+    } finally {
+      setWebsiteLoading(false);
+    }
+  };
+
+  const updateWebsiteSection = (section, field, value) => {
+    setWebsiteSettings((prev) => ({
+      ...prev,
+      [section]: {
+        ...(prev?.[section] || {}),
+        [field]: value,
+      },
+    }));
+  };
+
+  const updateHeroSlide = (index, field, value) => {
+    setWebsiteSettings((prev) => {
+      const heroSlides = [...(prev?.heroSlides || [])];
+      heroSlides[index] = { ...heroSlides[index], [field]: value };
+      return { ...prev, heroSlides };
+    });
+  };
+
+  const addHeroSlide = () => {
+    setWebsiteSettings((prev) => ({
+      ...prev,
+      heroSlides: [
+        ...(prev?.heroSlides || []),
+        { eyebrow: "", title: "New Hero Slide", text: "", image: "", isActive: true },
+      ],
+    }));
+  };
+
+  const removeHeroSlide = (index) => {
+    setWebsiteSettings((prev) => ({
+      ...prev,
+      heroSlides: (prev?.heroSlides || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  const updateService = (index, field, value) => {
+    setWebsiteSettings((prev) => {
+      const services = [...(prev?.services || [])];
+      services[index] = { ...services[index], [field]: value };
+      return { ...prev, services };
+    });
+  };
+
+  const addService = () => {
+    setWebsiteSettings((prev) => ({
+      ...prev,
+      services: [
+        ...(prev?.services || []),
+        { title: "New Service", description: "", slug: `service-${Date.now()}`, image: "", isActive: true },
+      ],
+    }));
+  };
+
+  const removeService = (index) => {
+    setWebsiteSettings((prev) => ({
+      ...prev,
+      services: (prev?.services || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  const saveWebsiteSettings = async () => {
+    if (!websiteSettings) return;
+    setWebsiteSaving(true);
+    try {
+      const payload = {
+        heroSlides: websiteSettings.heroSlides || [],
+        about: websiteSettings.about || {},
+        doctor: websiteSettings.doctor || {},
+        services: websiteSettings.services || [],
+        contact: websiteSettings.contact || {},
+        theme: websiteSettings.theme || {},
+      };
+      const res = await api.patch("/website-settings", payload);
+      setWebsiteSettings(res.data.settings || websiteSettings);
+      toast.success("Website changes saved successfully.");
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message || "Unable to save website settings.",
+      );
+    } finally {
+      setWebsiteSaving(false);
     }
   };
 
@@ -490,8 +740,7 @@ const DoctorDashboard = () => {
   }
 
   const stats = data?.stats || {};
-  const appointments =
-    data?.recentAppointments || [];
+  const appointments = appointmentData;
 
   return (
     <div className="min-h-screen bg-primary-light py-8">
@@ -545,10 +794,8 @@ const DoctorDashboard = () => {
             ],
             [
               DollarSign,
-              `Rs ${
-                stats.totalRevenuePKR || 0
-              } / $${
-                stats.totalRevenueUSD || 0
+              `Rs ${stats.totalRevenuePKR || 0
+              } / $${stats.totalRevenueUSD || 0
               }`,
               "Verified Revenue",
             ],
@@ -625,49 +872,47 @@ const DoctorDashboard = () => {
 
                         {apt.payment?.status ===
                           "Pending" && (
-                          <>
-                            <a
-                              href={fileUrl(
-                                apt.payment
-                                  .slipUrl,
-                              )}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="px-3 py-2 rounded-lg bg-secondary-sage text-accent-navy text-xs font-semibold"
-                            >
-                              View Slip
-                            </a>
+                            <>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  openSecureFile(`/payments/${apt.payment._id}/slip`)
+                                }
+                                className="px-3 py-2 rounded-lg bg-secondary-sage text-accent-navy text-xs font-semibold"
+                              >
+                                View Slip
+                              </button>
 
-                            <button
-                              onClick={() =>
-                                verifyPayment(
-                                  apt.payment._id,
-                                  "Successful",
-                                )
-                              }
-                              className="px-3 py-2 rounded-lg bg-green-600 text-white text-xs font-semibold"
-                            >
-                              Verify Payment
-                            </button>
+                              <button
+                                onClick={() =>
+                                  verifyPayment(
+                                    apt.payment._id,
+                                    "Successful",
+                                  )
+                                }
+                                className="px-3 py-2 rounded-lg bg-green-600 text-white text-xs font-semibold"
+                              >
+                                Verify Payment
+                              </button>
 
-                            <button
-                              onClick={() =>
-                                verifyPayment(
-                                  apt.payment._id,
-                                  "Failed",
-                                )
-                              }
-                              className="px-3 py-2 rounded-lg bg-red-600 text-white text-xs font-semibold"
-                            >
-                              Reject Payment
-                            </button>
-                          </>
-                        )}
+                              <button
+                                onClick={() =>
+                                  verifyPayment(
+                                    apt.payment._id,
+                                    "Failed",
+                                  )
+                                }
+                                className="px-3 py-2 rounded-lg bg-red-600 text-white text-xs font-semibold"
+                              >
+                                Reject Payment
+                              </button>
+                            </>
+                          )}
 
                         {apt.appointmentStatus ===
                           "pending" &&
                           apt.payment?.status ===
-                            "Successful" && (
+                          "Successful" && (
                             <button
                               onClick={() =>
                                 updateAppointment(
@@ -683,23 +928,23 @@ const DoctorDashboard = () => {
 
                         {apt.appointmentStatus ===
                           "confirmed" && (
-                          <button
-                            onClick={() =>
-                              updateAppointment(
-                                apt._id,
-                                "completed",
-                              )
-                            }
-                            className="px-3 py-2 rounded-lg bg-accent-sage text-white text-xs font-semibold"
-                          >
-                            Complete
-                          </button>
-                        )}
+                            <button
+                              onClick={() =>
+                                updateAppointment(
+                                  apt._id,
+                                  "completed",
+                                )
+                              }
+                              className="px-3 py-2 rounded-lg bg-accent-sage text-white text-xs font-semibold"
+                            >
+                              Complete
+                            </button>
+                          )}
 
                         {apt.appointmentStatus ===
                           "pending" &&
                           apt.payment?.status !==
-                            "Successful" && (
+                          "Successful" && (
                             <span className="px-3 py-2 rounded-lg bg-yellow-100 text-yellow-800 text-xs font-semibold">
                               Payment Verification
                               Pending
@@ -723,6 +968,45 @@ const DoctorDashboard = () => {
                 ))}
               </div>
             )}
+
+            <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                disabled={!appointmentPagination.hasPreviousPage}
+                onClick={() =>
+                  setAppointmentPage((page) =>
+                    Math.max(page - 1, 1),
+                  )
+                }
+                className="px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-accent-navy transition hover:bg-primary-light disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+              >
+                Previous
+              </button>
+
+              <div className="text-center">
+                <p className="text-sm font-semibold text-accent-navy">
+                  Page {appointmentPagination.currentPage} of{" "}
+                  {appointmentPagination.totalPages}
+                </p>
+                <p className="text-xs text-text-light mt-1">
+                  {appointmentPagination.totalAppointments}{" "}
+                  {appointmentPagination.totalAppointments === 1
+                    ? "appointment"
+                    : "appointments"}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                disabled={!appointmentPagination.hasNextPage}
+                onClick={() =>
+                  setAppointmentPage((page) => page + 1)
+                }
+                className="px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-accent-navy transition hover:bg-primary-light disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+              >
+                Next
+              </button>
+            </div>
           </div>
 
           {/* PATIENTS */}
@@ -738,38 +1022,85 @@ const DoctorDashboard = () => {
                 className="input-field"
                 placeholder="Search patient..."
                 value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  fetchPatients(e.target.value);
-                }}
+                onChange={(e) => setSearch(e.target.value)}
               />
 
-              <button className="px-3 rounded-lg bg-secondary-sage">
+              <button
+                type="button"
+                className="px-3 rounded-lg bg-secondary-sage"
+                aria-label="Search patients"
+              >
                 <Search className="w-4 h-4" />
               </button>
             </div>
 
             <div className="space-y-2 max-h-96 overflow-auto">
-              {patients.map((p) => (
-                <button
-                  key={p._id}
-                  onClick={() => openPatient(p)}
-                  className={`w-full text-left p-3 rounded-xl ${
-                    selectedPatient?._id ===
-                    p._id
-                      ? "bg-secondary-pink"
-                      : "bg-primary-light hover:bg-secondary-sage"
-                  }`}
-                >
-                  <p className="font-semibold text-accent-navy">
-                    {p.name}
-                  </p>
+              {patients.length === 0 ? (
+                <p className="py-6 text-center text-sm text-text-light">
+                  No patients found.
+                </p>
+              ) : (
+                patients.map((p) => (
+                  <button
+                    key={p._id}
+                    type="button"
+                    onClick={() => openPatient(p)}
+                    className={`w-full text-left p-3 rounded-xl transition ${
+                      selectedPatient?._id === p._id
+                        ? "bg-secondary-pink"
+                        : "bg-primary-light hover:bg-secondary-sage"
+                    }`}
+                  >
+                    <p className="font-semibold text-accent-navy">
+                      {p.name}
+                    </p>
 
-                  <p className="text-xs text-text-light">
-                    {p.email} • {p.country}
-                  </p>
-                </button>
-              ))}
+                    <p className="text-xs text-text-light">
+                      {p.email} • {p.country}
+                    </p>
+                  </button>
+                ))
+              )}
+            </div>
+
+            <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                disabled={!patientPagination.hasPreviousPage}
+                onClick={() =>
+                  setPatientPage((page) =>
+                    Math.max(page - 1, 1),
+                  )
+                }
+                className="px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-accent-navy transition hover:bg-primary-light disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+              >
+                Previous
+              </button>
+
+              <div className="text-center">
+                <p className="text-sm font-semibold text-accent-navy">
+                  Page {patientPagination.currentPage} of{" "}
+                  {patientPagination.totalPages}
+                </p>
+
+                <p className="text-xs text-text-light mt-1">
+                  {patientPagination.totalPatients}{" "}
+                  {patientPagination.totalPatients === 1
+                    ? "patient"
+                    : "patients"}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                disabled={!patientPagination.hasNextPage}
+                onClick={() =>
+                  setPatientPage((page) => page + 1)
+                }
+                className="px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-accent-navy transition hover:bg-primary-light disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+              >
+                Next
+              </button>
             </div>
           </div>
         </div>
@@ -930,34 +1261,29 @@ const DoctorDashboard = () => {
                       </h3>
 
                       {history.reports.length ===
-                      0 ? (
+                        0 ? (
                         <p className="text-sm text-text-light">
                           No reports.
                         </p>
                       ) : (
                         history.reports.map(
                           (r) => (
-                            <a
-                              key={r._id}
-                              href={fileUrl(
-                                r.fileUrl,
-                              )}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="block p-3 rounded-lg bg-secondary-pink/50 mb-2 hover:bg-secondary-pink"
-                            >
-                              <p className="font-medium">
-                                {r.title}
-                              </p>
+                            <button
+  key={r._id}
+  type="button"
+  onClick={() =>
+    openSecureFile(`/reports/${r._id}/file`)
+  }
+  className="block w-full text-left p-3 rounded-lg bg-secondary-pink/50 mb-2 hover:bg-secondary-pink"
+>
+  <p className="font-medium">
+    {r.title}
+  </p>
 
-                              <p className="text-xs text-text-light">
-                                {r.fileName} •
-                                uploaded by{" "}
-                                {
-                                  r.uploadedByRole
-                                }
-                              </p>
-                            </a>
+  <p className="text-xs text-text-light">
+    {r.fileName} • uploaded by {r.uploadedByRole}
+  </p>
+</button>
                           ),
                         )
                       )}
@@ -1150,16 +1476,30 @@ const DoctorDashboard = () => {
                     key={reportInputKey}
                     id="doctorReportFile"
                     type="file"
-                    accept=".jpg,.jpeg,.png,.webp,.pdf"
-                    onChange={(e) =>
+                    accept=".jpg,.jpeg,.png"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+
+                      if (!file) return;
+
+                      const result = validateUploadFile(file);
+
+                      if (!result.valid) {
+                        toast.error(result.message);
+                        e.target.value = "";
+                        return;
+                      }
+
                       setReport({
                         ...report,
-                        file:
-                          e.target.files?.[0] ||
-                          null,
-                      })
-                    }
+                        file,
+                      });
+                    }}
                   />
+
+                  <p className="text-xs text-text-light">
+                    Allowed formats: JPG, JPEG, PNG — Max size 50KB
+                  </p>
 
                   <button className="w-full btn-secondary">
                     <Upload className="w-4 h-4 inline mr-2" />
@@ -1170,6 +1510,127 @@ const DoctorDashboard = () => {
             </div>
           </section>
         )}
+
+
+
+        {/* =================================================
+            WEBSITE MANAGEMENT
+        ================================================== */}
+        <section className="mt-8 card">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <p className="section-label">Website CMS</p>
+              <h2 className="mt-2 text-2xl font-bold text-accent-navy flex items-center gap-2">
+                <Settings className="w-6 h-6" /> Website Management
+              </h2>
+              <p className="text-sm text-text-light mt-1">Edit public website content and theme without changing code.</p>
+            </div>
+            <button type="button" onClick={saveWebsiteSettings} disabled={websiteSaving || websiteLoading || !websiteSettings} className="btn-primary inline-flex items-center gap-2 disabled:opacity-60">
+              <Save className="w-4 h-4" /> {websiteSaving ? "Saving..." : "Save Website Changes"}
+            </button>
+          </div>
+
+          {websiteLoading ? (
+            <div className="py-10 text-center text-text-light">Loading website settings...</div>
+          ) : !websiteSettings ? (
+            <div className="py-10 text-center text-text-light">Website settings could not be loaded.</div>
+          ) : (
+            <div className="space-y-8">
+              <div>
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <h3 className="text-lg font-bold text-accent-navy">Hero Slides</h3>
+                  <button type="button" onClick={addHeroSlide} className="appointment-btn"><Plus className="w-4 h-4" /> Add Slide</button>
+                </div>
+                <div className="space-y-4">
+                  {(websiteSettings.heroSlides || []).map((slide, index) => (
+                    <div key={slide._id || index} className="rounded-2xl border border-slate-200 p-4 bg-primary-light">
+                      <div className="grid md:grid-cols-2 gap-3">
+                        <input className="input-field" placeholder="Eyebrow" value={slide.eyebrow || ""} onChange={(e) => updateHeroSlide(index, "eyebrow", e.target.value)} />
+                        <input className="input-field" placeholder="Title" value={slide.title || ""} onChange={(e) => updateHeroSlide(index, "title", e.target.value)} />
+                        <input className="input-field md:col-span-2" placeholder="Image path or HTTPS URL" value={slide.image || ""} onChange={(e) => updateHeroSlide(index, "image", e.target.value)} />
+                        <textarea className="input-field md:col-span-2" rows="3" placeholder="Description" value={slide.text || ""} onChange={(e) => updateHeroSlide(index, "text", e.target.value)} />
+                      </div>
+                      <div className="mt-3 flex items-center justify-between">
+                        <label className="flex items-center gap-2 text-sm font-medium text-accent-navy"><input type="checkbox" checked={slide.isActive !== false} onChange={(e) => updateHeroSlide(index, "isActive", e.target.checked)} /> Active</label>
+                        <button type="button" onClick={() => removeHeroSlide(index)} className="px-3 py-2 rounded-lg bg-red-100 text-red-700 text-xs font-semibold inline-flex items-center gap-1"><Trash2 className="w-3.5 h-3.5" /> Delete</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-6">
+                <h3 className="text-lg font-bold text-accent-navy mb-4">About Section</h3>
+                <div className="grid md:grid-cols-2 gap-3">
+                  {[['eyebrow','Eyebrow'],['title','Title'],['highlight','Highlighted Title'],['image','Image Path / HTTPS URL']].map(([field,label]) => (
+                    <div key={field}><label className="block text-sm font-semibold text-accent-navy mb-1">{label}</label><input className="input-field" value={websiteSettings.about?.[field] || ""} onChange={(e) => updateWebsiteSection("about", field, e.target.value)} /></div>
+                  ))}
+                  <textarea className="input-field md:col-span-2" rows="3" placeholder="First paragraph" value={websiteSettings.about?.description1 || ""} onChange={(e) => updateWebsiteSection("about", "description1", e.target.value)} />
+                  <textarea className="input-field md:col-span-2" rows="3" placeholder="Second paragraph" value={websiteSettings.about?.description2 || ""} onChange={(e) => updateWebsiteSection("about", "description2", e.target.value)} />
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-6">
+                <h3 className="text-lg font-bold text-accent-navy mb-4">Doctor Information</h3>
+                <div className="grid md:grid-cols-2 gap-3">
+                  <input className="input-field" placeholder="Doctor name" value={websiteSettings.doctor?.name || ""} onChange={(e) => updateWebsiteSection("doctor", "name", e.target.value)} />
+                  <input className="input-field" placeholder="Specialty" value={websiteSettings.doctor?.specialty || ""} onChange={(e) => updateWebsiteSection("doctor", "specialty", e.target.value)} />
+                  <textarea className="input-field md:col-span-2" rows="2" placeholder="Qualifications" value={websiteSettings.doctor?.qualifications || ""} onChange={(e) => updateWebsiteSection("doctor", "qualifications", e.target.value)} />
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-6">
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <h3 className="text-lg font-bold text-accent-navy">Services</h3>
+                  <button type="button" onClick={addService} className="appointment-btn"><Plus className="w-4 h-4" /> Add Service</button>
+                </div>
+                <div className="grid lg:grid-cols-2 gap-4">
+                  {(websiteSettings.services || []).map((service, index) => (
+                    <div key={service._id || index} className="rounded-2xl border border-slate-200 p-4">
+                      <div className="space-y-3">
+                        <input className="input-field" placeholder="Service title" value={service.title || ""} onChange={(e) => updateService(index, "title", e.target.value)} />
+                        <input className="input-field" placeholder="Slug" value={service.slug || ""} onChange={(e) => updateService(index, "slug", e.target.value)} />
+                        <input className="input-field" placeholder="Image path / HTTPS URL" value={service.image || ""} onChange={(e) => updateService(index, "image", e.target.value)} />
+                        <textarea className="input-field" rows="3" placeholder="Description" value={service.description || ""} onChange={(e) => updateService(index, "description", e.target.value)} />
+                        <div className="flex items-center justify-between">
+                          <label className="flex items-center gap-2 text-sm font-medium text-accent-navy"><input type="checkbox" checked={service.isActive !== false} onChange={(e) => updateService(index, "isActive", e.target.checked)} /> Active</label>
+                          <button type="button" onClick={() => removeService(index)} className="px-3 py-2 rounded-lg bg-red-100 text-red-700 text-xs font-semibold inline-flex items-center gap-1"><Trash2 className="w-3.5 h-3.5" /> Delete</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-6">
+                <h3 className="text-lg font-bold text-accent-navy mb-4">Contact Information</h3>
+                <div className="grid md:grid-cols-2 gap-3">
+                  {[['phone','Phone'],['email','Email'],['address','Address'],['clinicHours','Clinic Hours']].map(([field,label]) => (
+                    <div key={field}><label className="block text-sm font-semibold text-accent-navy mb-1">{label}</label><input className="input-field" value={websiteSettings.contact?.[field] || ""} onChange={(e) => updateWebsiteSection("contact", field, e.target.value)} /></div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-6">
+                <h3 className="text-lg font-bold text-accent-navy mb-4 flex items-center gap-2"><Palette className="w-5 h-5" /> Theme & Typography</h3>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[['primaryColor','Primary'],['secondaryColor','Secondary'],['accentColor','Accent'],['textColor','Text']].map(([field,label]) => (
+                    <label key={field} className="text-sm font-semibold text-accent-navy">{label} Color<div className="mt-1 flex gap-2"><input type="color" className="h-11 w-14 rounded border" value={websiteSettings.theme?.[field] || '#000000'} onChange={(e) => updateWebsiteSection("theme", field, e.target.value)} /><input className="input-field" value={websiteSettings.theme?.[field] || ""} onChange={(e) => updateWebsiteSection("theme", field, e.target.value)} /></div></label>
+                  ))}
+                </div>
+                <div className="grid md:grid-cols-3 gap-4 mt-4">
+                  <div><label className="block text-sm font-semibold text-accent-navy mb-1">Font Family</label><select className="input-field" value={websiteSettings.theme?.fontFamily || 'Inter'} onChange={(e) => updateWebsiteSection("theme", "fontFamily", e.target.value)}><option>Inter</option><option>Arial</option><option>Georgia</option><option>Verdana</option><option>Tahoma</option></select></div>
+                  <div><label className="block text-sm font-semibold text-accent-navy mb-1">Heading Size (24-80px)</label><input type="number" min="24" max="80" className="input-field" value={websiteSettings.theme?.headingSize || 48} onChange={(e) => updateWebsiteSection("theme", "headingSize", Number(e.target.value))} /></div>
+                  <div><label className="block text-sm font-semibold text-accent-navy mb-1">Body Size (12-24px)</label><input type="number" min="12" max="24" className="input-field" value={websiteSettings.theme?.bodySize || 16} onChange={(e) => updateWebsiteSection("theme", "bodySize", Number(e.target.value))} /></div>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-6 flex justify-end">
+                <button type="button" onClick={saveWebsiteSettings} disabled={websiteSaving} className="btn-primary inline-flex items-center gap-2 disabled:opacity-60"><Save className="w-4 h-4" /> {websiteSaving ? "Saving..." : "Save Website Changes"}</button>
+              </div>
+            </div>
+          )}
+        </section>
 
         {/* =================================================
             BLOG MANAGEMENT
@@ -1199,7 +1660,7 @@ const DoctorDashboard = () => {
 
             <button
               onClick={startCreateBlog}
-              className="btn-primary inline-flex items-center justify-center gap-2"
+              className="appointment-btn"
             >
               <Plus className="w-4 h-4" />
               Create New Blog
@@ -1209,7 +1670,10 @@ const DoctorDashboard = () => {
           {/* BLOG FORM */}
 
           {showBlogForm && (
-            <div className="mb-8 p-5 rounded-2xl bg-primary-light border border-secondary-sage">
+            <div
+              ref={blogFormRef}
+              className="scroll-mt-28 mb-8 p-5 rounded-2xl bg-primary-light border border-secondary-sage [overflow-anchor:none]"
+            >
 
               <div className="flex items-center justify-between mb-5">
 
@@ -1318,14 +1782,14 @@ const DoctorDashboard = () => {
                     Blog Content *
                   </label>
 
-                  <textarea
-                    name="content"
-                    rows="12"
-                    className="input-field"
-                    placeholder="Write the complete blog article here..."
+                  <RichTextEditor
                     value={blogForm.content}
-                    onChange={handleBlogChange}
-                    required
+                    onChange={(content) =>
+                      setBlogForm((prev) => ({
+                        ...prev,
+                        content,
+                      }))
+                    }
                   />
                 </div>
 
@@ -1437,8 +1901,8 @@ const DoctorDashboard = () => {
               </h3>
 
               <span className="text-sm text-text-light">
-                {blogs.length}{" "}
-                {blogs.length === 1
+                {blogPagination.totalBlogs}{" "}
+                {blogPagination.totalBlogs === 1
                   ? "article"
                   : "articles"}
               </span>
@@ -1506,11 +1970,10 @@ const DoctorDashboard = () => {
                         </span>
 
                         <span
-                          className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                            blog.isPublished
+                          className={`text-xs font-semibold px-2 py-1 rounded-full ${blog.isPublished
                               ? "bg-green-100 text-green-700"
                               : "bg-yellow-100 text-yellow-700"
-                          }`}
+                            }`}
                         >
                           {blog.isPublished
                             ? "Published"
@@ -1550,8 +2013,8 @@ const DoctorDashboard = () => {
                       </div> */}
 
                       <div className="text-xs text-text-light mt-4">
-  Published by {blog.authorName || "Dr. Elite Gynaecologist"}
-</div>
+                        Published by {blog.authorName || "Dr. Elite Gynaecologist"}
+                      </div>
 
                       {/* ACTIONS */}
 
@@ -1613,6 +2076,48 @@ const DoctorDashboard = () => {
                     </div>
                   </article>
                 ))}
+              </div>
+            )}
+
+            {!blogLoading && blogPagination.totalBlogs > 0 && (
+              <div className="mt-6 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                <button
+                  type="button"
+                  disabled={!blogPagination.hasPreviousPage}
+                  onClick={() =>
+                    setBlogPage((page) =>
+                      Math.max(page - 1, 1),
+                    )
+                  }
+                  className="px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-accent-navy transition hover:bg-primary-light disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                >
+                  Previous
+                </button>
+
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-accent-navy">
+                    Page {blogPagination.currentPage} of{" "}
+                    {blogPagination.totalPages}
+                  </p>
+
+                  <p className="text-xs text-text-light mt-1">
+                    {blogPagination.totalBlogs}{" "}
+                    {blogPagination.totalBlogs === 1
+                      ? "article"
+                      : "articles"}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={!blogPagination.hasNextPage}
+                  onClick={() =>
+                    setBlogPage((page) => page + 1)
+                  }
+                  className="px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-accent-navy transition hover:bg-primary-light disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                >
+                  Next
+                </button>
               </div>
             )}
           </div>

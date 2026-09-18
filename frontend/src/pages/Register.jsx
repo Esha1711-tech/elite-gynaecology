@@ -70,9 +70,9 @@ const Register = () => {
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
               <img
-                src="/logo-mark.png"
+                src="/logo.png"
                 alt="Elite Gynaecology"
-                className="h-16 w-16 object-contain"
+                className="h-16 w-auto object-contain"
               />
             </div>
 

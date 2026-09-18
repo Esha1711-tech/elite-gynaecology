@@ -11,6 +11,7 @@ import {
 import toast from "react-hot-toast";
 import api from "../utils/api";
 import { useAuth } from "../context/AuthContext";
+import { validateUploadFile } from "../utils/fileValidation";
 
 const NATIONAL_FEE = 3000;
 const INTERNATIONAL_FEE = 50;
@@ -281,18 +282,30 @@ const Appointments = () => {
                     <span className="text-sm text-text-light truncate">
                       {paymentSlip
                         ? paymentSlip.name
-                        : "Upload JPG, PNG, WEBP or PDF (max 5MB)"}
+                        : "Upload JPG, JPEG or PNG (max 50KB)"}
                     </span>
                   </label>
                   <input
                     key={paymentInputKey}
                     id="paymentSlip"
                     type="file"
-                    accept=".jpg,.jpeg,.png,.webp,.pdf"
+                    accept=".jpg,.jpeg,.png"
                     className="hidden"
-                    onChange={(e) =>
-                      setPaymentSlip(e.target.files?.[0] || null)
-                    }
+                    onChange={(e) => {
+  const file = e.target.files?.[0];
+
+  if (!file) return;
+
+  const result = validateUploadFile(file);
+
+  if (!result.valid) {
+    toast.error(result.message);
+    e.target.value = "";
+    return;
+  }
+
+  setPaymentSlip(file);
+}}
                   />
                 </div>
 

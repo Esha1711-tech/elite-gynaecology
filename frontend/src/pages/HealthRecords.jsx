@@ -3,6 +3,7 @@ import { FileText, Pill, Upload, Download } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../utils/api";
 import { useAuth } from "../context/AuthContext";
+import { validateUploadFile } from "../utils/fileValidation";
 
 const API_ORIGIN = import.meta.env.VITE_API_ORIGIN || "http://localhost:5000";
 const fileUrl = (url) => url?.startsWith("http") ? url : `${API_ORIGIN}${url}`;
@@ -69,10 +70,26 @@ const HealthRecords = () => {
             <h2 className="text-xl font-semibold text-accent-navy flex items-center gap-2"><FileText className="w-5 h-5" /> My Medical Reports</h2>
             <div className="mt-5 space-y-3">
               {reports.length === 0 ? <p className="text-text-light">No reports uploaded.</p> : reports.map(r => (
-                <a key={r._id} href={fileUrl(r.fileUrl)} target="_blank" rel="noreferrer" className="flex items-center justify-between p-4 rounded-xl bg-secondary-pink/60">
-                  <div><p className="font-semibold text-accent-navy">{r.title}</p><p className="text-xs text-text-light">{r.fileName} • uploaded by {r.uploadedByRole}</p></div>
-                  <Download className="w-5 h-5 text-accent-navy" />
-                </a>
+                <button
+  key={r._id}
+  type="button"
+  onClick={() =>
+    openSecureFile(`/reports/${r._id}/file`)
+  }
+  className="flex w-full items-center justify-between p-4 rounded-xl bg-secondary-pink/60"
+>
+  <div className="text-left">
+    <p className="font-semibold text-accent-navy">
+      {r.title}
+    </p>
+
+    <p className="text-xs text-text-light">
+      {r.fileName} • uploaded by {r.uploadedByRole}
+    </p>
+  </div>
+
+  <Download className="w-5 h-5 text-accent-navy" />
+</button>
               ))}
             </div>
           </section>
@@ -85,7 +102,26 @@ const HealthRecords = () => {
             <form onSubmit={upload} className="space-y-3 mt-5">
               <input className="input-field" placeholder="Report title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
               <textarea className="input-field" placeholder="Description (optional)" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-              <input id="patientReportFile" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={e => setForm({ ...form, file: e.target.files?.[0] || null })} />
+              <input id="patientReportFile" type="file" accept=".jpg,.jpeg,.png" 
+              onChange={(e) => {
+  const file = e.target.files?.[0];
+
+  if (!file) return;
+
+  const result = validateUploadFile(file);
+
+  if (!result.valid) {
+    toast.error(result.message);
+    e.target.value = "";
+    return;
+  }
+
+  setForm({
+    ...form,
+    file,
+  });
+}} />
+              <p className="text-xs text-text-light">Allowed formats: JPG, JPEG, PNG — Max size 50KB</p>
               <button className="btn-primary"><Upload className="w-4 h-4 inline mr-2" /> Upload Report</button>
             </form>
           </section>

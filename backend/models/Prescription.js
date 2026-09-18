@@ -24,5 +24,14 @@ const prescriptionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+prescriptionSchema.index({
+  patient: 1,
+  createdAt: -1,
+});
+
+prescriptionSchema.index({
+  doctor: 1,
+  createdAt: -1,
+});
 
 module.exports = mongoose.models.Prescription || mongoose.model("Prescription", prescriptionSchema);

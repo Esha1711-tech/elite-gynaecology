@@ -1,6 +1,7 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Stethoscope,
+    Stethoscope,
   Calendar,
   FileText,
   ShieldCheck,
@@ -17,642 +18,1089 @@ import {
   Mail,
   MapPin,
   Clock,
+  Award,
+  UserRoundCheck,
+  ClipboardCheck,
+  MonitorSmartphone,
+  ChevronRight,
+  ChevronLeft,
 } from "lucide-react";
+
 import { useAuth } from "../context/AuthContext";
 
 const Home = () => {
   const { user } = useAuth();
+  const [currentSlide, setCurrentSlide] = useState(0);
 
-  const primaryAction =
-    user?.role === "patient"
-      ? { to: "/appointments", label: "Book Appointment" }
-      : user?.role === "doctor"
-        ? { to: "/admin", label: "Go to Dashboard" }
-        : { to: "/register", label: "Get Started" };
-
-  const services = [
+  const heroSlides = [
     {
-      icon: Stethoscope,
-      title: "Comprehensive Gynecology Consultation",
-      desc: "Complete gynecological assessment, consultation, diagnosis and personalized care.",
-      tone: "sage",
+      image: "/checkup.jpg",
+      eyebrow: "Prenatal Excellence",
+      title: "Exceptional Maternity Care",
+      text: "A warm, supportive approach to pregnancy, motherhood and every stage of womanhood.",
     },
     {
-      icon: Baby,
-      title: "Pregnancy & Antenatal Care",
-      desc: "Professional antenatal care and regular monitoring throughout pregnancy.",
-      tone: "pink",
+      image: "/services/pregnancy-antenatal-care.jpg",
+      eyebrow: "Pregnancy & Antenatal Care",
+      title: "Care Through Every Trimester",
+      text: "Personalized antenatal support with professional guidance and regular monitoring throughout pregnancy.",
     },
     {
-      icon: Heart,
-      title: "High-Risk Pregnancy Management",
-      desc: "Specialized monitoring and care for pregnancies requiring additional attention.",
-      tone: "sage",
-    },
-    {
-      icon: Microscope,
-      title: "Infertility Evaluation & Treatment",
-      desc: "Comprehensive fertility evaluation and personalized reproductive healthcare.",
-      tone: "pink",
-    },
-    {
-      icon: Activity,
-      title: "PCOS & Menstrual Disorder Management",
-      desc: "Personalized management of PCOS, irregular periods and menstrual concerns.",
-      tone: "sage",
-    },
-    {
-      icon: Flower2,
-      title: "Menopause & Hormonal Health Care",
-      desc: "Support and personalized care for menopause and hormonal health.",
-      tone: "pink",
-    },
-    {
-      icon: ShieldCheck,
-      title: "Cervical Cancer Screening (Pap Smear & HPV)",
-      desc: "Preventive cervical screening and testing for early detection.",
-      tone: "sage",
-    },
-    {
-      icon: Users,
-      title: "Family Planning & Contraceptive Services",
-      desc: "Confidential counseling and personalized family planning options.",
-      tone: "pink",
-    },
-    {
-      icon: Scissors,
-      title: "All Type Of Gynecological Surgeries",
-      desc: "Professional surgical care for a range of gynecological conditions.",
-      tone: "sage",
+      image: "/services/high-risk-pregnancy.jpg",
+      eyebrow: "Specialist Women's Care",
+      title: "Support When You Need It Most",
+      text: "Experienced gynaecological care focused on comfort, privacy and individual healthcare needs.",
     },
   ];
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 5000);
+
+    return () => clearInterval(timer);
+  }, [heroSlides.length]);
+
+  const goToSlide = (index) => setCurrentSlide(index);
+  const previousSlide = () =>
+    setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
+  const nextSlide = () =>
+    setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+
+  // =========================================================
+  // PRIMARY ACTION
+  // =========================================================
+
+  const primaryAction =
+    user?.role === "patient"
+      ? {
+          to: "/appointments",
+          label: "Book Appointment",
+        }
+      : user?.role === "doctor"
+        ? {
+            to: "/admin",
+            label: "Go to Dashboard",
+          }
+        : {
+            to: "/register",
+            label: "Book Appointment",
+          };
+
+  // =========================================================
+  // SERVICES
+  // =========================================================
+
+  const services = [
+    {
+      title: "Comprehensive Gynecology Consultation",
+      desc: "Complete gynecological assessment, consultation, diagnosis and personalized care.",
+      slug: "gynecology-consultation",
+      image: "/services/gyneacology-consultation.jpg",
+    },
+    {
+      // icon: Baby,
+      title: "Pregnancy & Antenatal Care",
+      desc: "Professional antenatal care and regular monitoring throughout pregnancy.",
+      slug: "pregnancy-antenatal-care",
+      image: "/services/pregnancy-antenatal-care.jpg",
+    },
+    {
+      // icon: Heart,
+      title: "High-Risk Pregnancy Management",
+      desc: "Specialized monitoring and care for pregnancies requiring additional attention.",
+      slug: "high-risk-pregnancy",
+      image: "/services/high-risk-pregnancy.jpg",
+    },
+    {
+      // icon: Microscope,
+      title: "Infertility Evaluation & Treatment",
+      desc: "Comprehensive fertility evaluation and personalized reproductive healthcare.",
+      slug: "infertility-treatment",
+      image: "/services/infertility-treatment.jpg",
+    },
+    {
+      // icon: Activity,
+      title: "PCOS & Menstrual Disorder Management",
+      desc: "Personalized management of PCOS, irregular periods and menstrual concerns.",
+      slug: "pcos-menstrual-disorders",
+      image: "/services/pcos-menstrual-disorders.jpg",
+    },
+    {
+      // icon: Flower2,
+      title: "Menopause & Hormonal Health Care",
+      desc: "Support and personalized care for menopause and hormonal health.",
+      slug: "menopause-hormonal-health",
+      image: "/services/menopause-hormonal-health.jpg",
+    },
+    {
+      // icon: ShieldCheck,
+      title: "Cervical Cancer Screening",
+      desc: "Pap smear and HPV screening services focused on prevention and early detection.",
+      slug: "cervical-cancer-screening",
+      image: "/services/cervical-cancer-screening.jpg",
+    },
+    {
+      // icon: Users,
+      title: "Family Planning & Contraceptive Services",
+      desc: "Confidential counseling and personalized family planning options.",
+      slug: "family-planning",
+      image: "/services/family-planning.jpg",
+    },
+    {
+      // icon: Scissors,
+      title: "All Types of Gynecological Surgeries",
+      desc: "Professional surgical care for a wide range of gynecological conditions.",
+      slug: "gynecological-surgeries",
+      image: "/services/gynecological-surgeries.jpg",
+    },
+  ];
+
+  // =========================================================
+  // WHY CHOOSE US
+  // =========================================================
+
   const features = [
     {
-      icon: Stethoscope,
-      title: "Expert Care",
-      desc: "Professional gynaecological consultations focused on your individual needs.",
+      icon: Award,
+      title: "Specialist Care",
+      desc: "Professional women's healthcare under an experienced consultant gynaecologist.",
+    },
+    {
+      icon: Heart,
+      title: "Patient-Centered",
+      desc: "Every consultation is focused on comfort, privacy and individual healthcare needs.",
     },
     {
       icon: Calendar,
-      title: "Easy Booking",
-      desc: "Book appointments online quickly and conveniently.",
-    },
-    {
-      icon: FileText,
-      title: "Digital Records",
-      desc: "Organized and secure patient information for better care management.",
+      title: "Easy Appointments",
+      desc: "Convenient online appointment booking and organized consultation management.",
     },
     {
       icon: ShieldCheck,
-      title: "Privacy First",
-      desc: "Your healthcare information is handled with care and confidentiality.",
+      title: "Secure Healthcare",
+      desc: "Patient information and medical records are handled securely and confidentially.",
+    },
+  ];
+
+  // =========================================================
+  // FAQ
+  // =========================================================
+
+  const faqs = [
+    {
+      question: "When should I visit a gynaecologist?",
+      answer:
+        "You can consult a gynaecologist for routine women's health checkups, menstrual concerns, pregnancy care, fertility concerns, hormonal issues, pelvic symptoms or other reproductive health concerns.",
+    },
+    {
+      question: "Can I book an appointment online?",
+      answer:
+        "Yes. Registered patients can conveniently request and manage appointments through the Elite Gynaecology online portal.",
+    },
+    {
+      question: "Do you provide pregnancy and antenatal care?",
+      answer:
+        "Yes. Pregnancy and antenatal care is one of our core services, including routine monitoring and care throughout pregnancy.",
+    },
+    {
+      question: "Are consultations confidential?",
+      answer:
+        "Yes. Patient privacy and confidentiality are an important part of our healthcare and digital record management process.",
+    },
+    {
+      question: "What should I bring to my first appointment?",
+      answer:
+      "Please bring any previous medical records, test results, ultrasound reports, current medication details, and relevant health information. This helps the doctor better understand your medical history and provide appropriate guidance."
     },
   ];
 
   return (
-    <div className="bg-[#FAFAF7] text-[#172B49]">
+    <div className="bg-white text-[#6E1F32]">
+
       {/* =====================================================
-          HERO / HOME
+          HERO / AUTO SLIDER
       ====================================================== */}
-      <section
-        id="home"
-        className="relative overflow-hidden bg-gradient-to-br from-[#FAFAF7] via-white to-[#F7E8EA] pt-16 pb-20 lg:pt-24"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Hero Content */}
-            <div>
-              <span className="inline-flex rounded-full bg-[#F7E8EA] px-4 py-2 text-sm font-semibold text-[#6F8F7A]">
-                Women's Healthcare • Lahore
-              </span>
+      <section id="home" className="relative overflow-hidden bg-[#33151B]">
+        <div className="relative min-h-[560px] md:min-h-[620px] lg:min-h-[660px]">
+          {heroSlides.map((slide, index) => (
+            <div
+              key={slide.title}
+              className={`absolute inset-0 transition-opacity duration-1000 ${
+                index === currentSlide ? "opacity-100" : "opacity-0 pointer-events-none"
+              }`}
+            >
+              <img
+                src={slide.image}
+                alt={slide.title}
+                className="h-full w-full object-cover object-center"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/15" />
+            </div>
+          ))}
 
-              <h1 className="mt-6 text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-[#172B49]">
-                Compassionate care
-                <span className="block text-[#6F8F7A]">for every woman.</span>
-              </h1>
-
-              <p className="mt-6 max-w-xl text-lg leading-8 text-[#667085]">
-                Expert gynaecological care with a patient-first approach,
-                convenient appointments and a secure digital healthcare
-                experience.
+          <div className="relative z-10 mx-auto flex min-h-[560px] max-w-7xl items-center px-5 sm:px-6 md:min-h-[620px] lg:min-h-[660px] lg:px-8">
+            <div className="max-w-3xl pt-8 text-white">
+              <p className="text-lg font-bold text-[#F5B1BC] md:text-xl">
+                {heroSlides[currentSlide].eyebrow}
               </p>
 
-              <div className="mt-8 flex flex-wrap gap-4">
+              <h1 className="mt-4 max-w-3xl text-4xl font-extrabold leading-[1.03] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
+                {heroSlides[currentSlide].title}
+              </h1>
+
+              <p className="mt-5 max-w-2xl text-lg leading-8 text-white/90 md:text-2xl">
+                {heroSlides[currentSlide].text}
+              </p>
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                <a
+                  href="https://wa.me/923180082848"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-4 font-bold text-[#CF3650] shadow-lg transition hover:-translate-y-0.5"
+                >
+                  <Phone className="h-5 w-5" />
+                  Call Us
+                </a>
+
                 <Link
                   to={primaryAction.to}
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#172B49] px-6 py-3.5 font-semibold text-white hover:bg-[#6F8F7A] transition"
+                  className="appointment-btn"
                 >
-                  {primaryAction.label}
-                  <ArrowRight className="h-5 w-5" />
+                  <Calendar className="h-5 w-5" />
+                  {user?.role === "doctor" ? "Go to Dashboard" : "Book Your Appointment"}
                 </Link>
-
-                {!user && (
-                  <Link
-                    to="/login"
-                    className="inline-flex items-center rounded-xl border-2 border-[#172B49] px-6 py-3.5 font-semibold text-[#172B49] hover:bg-[#172B49] hover:text-white transition"
-                  >
-                    Login
-                  </Link>
-                )}
-              </div>
-
-              <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3">
-                {[
-                  "Trusted consultations",
-                  "Easy online booking",
-                  "Secure records",
-                ].map((item) => (
-                  <div
-                    key={item}
-                    className="flex items-center gap-2 text-sm text-[#667085]"
-                  >
-                    <CheckCircle2 className="h-4 w-4 text-[#6F8F7A]" />
-                    {item}
-                  </div>
-                ))}
               </div>
             </div>
+          </div>
 
-            {/* Hero Visual */}
-            <div className="relative flex justify-center lg:justify-end">
-              <div className="absolute -inset-8 rounded-[3rem] bg-[#F7E8EA] blur-3xl opacity-70" />
+          <button
+            type="button"
+            onClick={previousSlide}
+            aria-label="Previous banner"
+            className="absolute left-4 top-1/2 z-20 hidden h-14 w-14 -translate-y-1/2 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition hover:bg-white/30 md:flex"
+          >
+            <ChevronLeft className="h-8 w-8" />
+          </button>
 
-              <div className="relative w-full max-w-xl rounded-[2rem] border border-white bg-white/80 p-5 shadow-xl backdrop-blur">
-                <div className="rounded-[1.5rem] bg-gradient-to-br from-[#E7EFE9] via-white to-[#F7E8EA] p-8 min-h-[390px] flex flex-col justify-between">
-                  <div className="flex items-center justify-between">
-                    <img
-                      src="/logo-mark.png"
-                      alt="Elite Gynaecology"
-                      className="h-16 w-16 object-contain"
-                    />
+          <button
+            type="button"
+            onClick={nextSlide}
+            aria-label="Next banner"
+            className="absolute right-4 top-1/2 z-20 hidden h-14 w-14 -translate-y-1/2 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition hover:bg-white/30 md:flex"
+          >
+            <ChevronRight className="h-8 w-8" />
+          </button>
 
-                    <span className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-[#6F8F7A] shadow-sm">
-                      Patient First
-                    </span>
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-semibold text-[#D98C9A]">
-                      ELITE GYNAECOLOGY LAHORE
-                    </p>
-
-                    <h2 className="mt-3 text-3xl md:text-4xl font-bold text-[#172B49]">
-                      Care that listens.
-                      <br />
-                      Care that understands.
-                    </h2>
-
-                    <p className="mt-4 max-w-md text-sm leading-6 text-[#667085]">
-                      A calm, modern space for consultations, appointments and
-                      women's health management.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 gap-2">
+            {heroSlides.map((slide, index) => (
+              <button
+                key={slide.title}
+                type="button"
+                onClick={() => goToSlide(index)}
+                aria-label={`Go to slide ${index + 1}`}
+                className={`h-3 rounded-full transition-all ${
+                  currentSlide === index ? "w-9 bg-[#CF3650]" : "w-3 bg-white/75"
+                }`}
+              />
+            ))}
           </div>
         </div>
       </section>
 
       {/* =====================================================
+          QUICK INFORMATION STRIP
+      ====================================================== */}
+
+      <section className="relative z-20 -mt-1">
+
+        <div className="max-w-7xl mx-auto">
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 bg-[#CF3650]">
+
+            {[
+              {
+                icon: Calendar,
+                title: "Appointments",
+                text: "Book Online",
+              },
+              {
+                icon: Stethoscope,
+                title: "Specialist Care",
+                text: "Women's Healthcare",
+              },
+              {
+                icon: Phone,
+                title: "Call Us",
+                text: "+92 318 0082848",
+              },
+              {
+                icon: Clock,
+                title: "Clinic Hours",
+                text: "Mon - Sat",
+              },
+            ].map(({ icon: Icon, title, text }, index) => (
+              <div
+                key={title}
+                className={`flex items-center gap-4 px-7 py-7 ${
+                  index !== 3
+                    ? "lg:border-r border-white/15"
+                    : ""
+                }`}
+              >
+                <Icon className="w-7 h-7 text-[#F5A900] shrink-0" />
+
+                <div>
+                  <p className="text-white font-semibold">
+                    {title}
+                  </p>
+
+                  <p className="mt-1 text-sm text-slate-300">
+                    {text}
+                  </p>
+                </div>
+              </div>
+            ))}
+
+          </div>
+
+        </div>
+
+      </section>
+
+      {/* =====================================================
           ABOUT
       ====================================================== */}
-      <section id="about" className="scroll-mt-24 bg-white py-20">
+
+      <section
+        id="about"
+        className="scroll-mt-24 py-6 lg:py-7 bg-white"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <span className="text-sm font-semibold uppercase tracking-wider text-[#6F8F7A]">
-                About Elite Gynaecology
-              </span>
 
-              <h2 className="mt-4 text-3xl md:text-4xl font-bold text-[#172B49]">
-                Dedicated to women's health and well-being.
-              </h2>
+          <div className="grid lg:grid-cols-2 gap-5 lg:gap-5 items-center">
 
-              <p className="mt-5 text-[#667085] leading-8">
-                Elite Gynaecology Lahore is designed to provide women with
-                professional, compassionate and personalized healthcare. Our
-                approach focuses on creating a comfortable environment where
-                every patient can discuss her concerns with confidence.
-              </p>
+            {/* IMAGE */}
 
-              <p className="mt-4 text-[#667085] leading-8">
-                From routine gynecological consultations and pregnancy care to
-                reproductive health and hormonal management, we aim to make
-                every step of your healthcare journey simple and organized.
-              </p>
+            <div className="relative">
 
-              <div className="mt-7 space-y-3">
-                {[
-                  "Patient-centered healthcare",
-                  "Professional gynecological care",
-                  "Comfortable and confidential consultations",
-                  "Modern digital appointment management",
-                ].map((item) => (
-                  <div key={item} className="flex items-center gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-[#6F8F7A]" />
-                    <span className="text-[#667085]">{item}</span>
-                  </div>
-                ))}
+              <div className="bg-[#FCEBED] p-4 sm:p-7">
+
+                <img
+                  src="/hero-image.png"
+                  alt="Elite Gynaecology"
+                  className="w-full h-[470px] object-cover object-top"
+                />
+
               </div>
-            </div>
 
-            <div className="rounded-3xl bg-[#F7E8EA] p-8 lg:p-10">
-              <div className="rounded-2xl bg-white p-8 shadow-sm">
-                <div className="w-14 h-14 rounded-2xl bg-[#E7EFE9] flex items-center justify-center">
-                  <Heart className="h-7 w-7 text-[#6F8F7A]" />
-                </div>
+              <div className="absolute -bottom-7 right-0 sm:-right-7 bg-[#E85B73] text-white p-7 shadow-lg">
 
-                <h3 className="mt-6 text-2xl font-bold text-[#172B49]">
-                  Your comfort matters.
-                </h3>
+                <Heart className="w-8 h-8" />
 
-                <p className="mt-4 text-[#667085] leading-7">
-                  We believe quality healthcare begins with listening,
-                  understanding and building trust with every patient.
+                <p className="mt-3 text-xl font-bold">
+                  Compassionate
                 </p>
 
-                <div className="mt-7 grid grid-cols-2 gap-4">
-                  <div className="rounded-xl bg-[#E7EFE9] p-5">
-                    <p className="text-2xl font-bold text-[#172B49]">9+</p>
-                    <p className="mt-1 text-sm text-[#667085]">
-                      Specialized Services
-                    </p>
-                  </div>
+                <p className="text-sm text-white/80">
+                  Women's Healthcare
+                </p>
 
-                  <div className="rounded-xl bg-[#F7E8EA] p-5">
-                    <p className="text-2xl font-bold text-[#172B49]">24/7</p>
-                    <p className="mt-1 text-sm text-[#667085]">Online Access</p>
-                  </div>
-                </div>
               </div>
+
             </div>
+
+            {/* CONTENT */}
+
+            <div>
+
+              <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#CF3650]">
+                About Elite Gynaecology
+              </p>
+
+              <h2 className="mt-4 text-3xl md:text-4xl lg:text-5xl font-bold leading-tight text-[#6E1F32]">
+                Complete Women's Healthcare
+                <span className="block text-[#E85B73]">
+                  Under Expert Supervision
+                </span>
+              </h2>
+
+              <p className="mt-4 text-[#6F5B60] leading-8">
+                Elite Gynaecology Lahore provides professional,
+                compassionate and personalized healthcare for women at
+                different stages of life.
+              </p>
+
+              <p className="mt-4 text-[#6F5B60] leading-8">
+                From routine gynaecological consultations and pregnancy
+                care to reproductive health, hormonal management and
+                specialized treatment, our focus is on making every
+                patient's healthcare journey comfortable and organized.
+              </p>
+
+              <div className="mt-5 grid sm:grid-cols-2 gap-4 text-center">
+
+                {[
+                  "Personalized Consultation",
+                  "Pregnancy Care",
+                  "Reproductive Healthcare",
+                  "Gynae Oncology",
+                ].map((item) => (
+                  <div
+                    key={item}
+                    className="flex items-center justify-center gap-3"
+                  >
+                    <CheckCircle2 className="w-5 h-5 text-[#CF3650] shrink-0" />
+
+                    <span className="text-sm font-medium text-[#5E4750]">
+                      {item}
+                    </span>
+                  </div>
+                ))}
+
+              </div>
+              <div className="flex justify-center">
+  <Link
+    to={primaryAction.to}
+    className="mt-6 inline-flex items-center justify-center gap-3 font-semibold text-[#6E1F32] group"
+  >
+    Schedule a Consultation
+
+    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition" />
+  </Link>
+</div>
+
+            </div>
+
           </div>
+
         </div>
       </section>
 
       {/* =====================================================
           SERVICES
       ====================================================== */}
-      <section id="services" className="scroll-mt-24 bg-[#FAFAF7] py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mb-12">
-            <span className="text-sm font-semibold uppercase tracking-wider text-[#6F8F7A]">
-              Our Services
-            </span>
 
-            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-[#172B49]">
-              Comprehensive care for every stage of women's health.
+      <section
+  id="services"
+  className="scroll-mt-24 bg-[#FFF7F8] py-10 lg:py-14"
+>
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    {/* HEADING */}
+    <div className="text-center max-w-3xl mx-auto">
+      <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#CF3650]">
+        Our Services
+      </p>
+
+      <h2 className="mt-3 text-3xl md:text-4xl lg:text-5xl font-bold text-[#6E1F32]">
+        Complete Women's Healthcare Services
+      </h2>
+
+      <p className="mt-4 text-[#6F5B60] leading-7">
+        Comprehensive care designed to support women's health from
+        routine consultations to specialized treatment.
+      </p>
+    </div>
+
+    {/* SERVICE CARDS */}
+    <div className="mt-8 grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+     {services.map(({ title, desc, slug, image }) => (
+  <Link
+    key={slug}
+    to={`/services/${slug}`}
+    className="group overflow-hidden rounded-2xl border border-[#F0D8DD] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#CF3650]/40 hover:shadow-xl"
+  >
+    {/* IMAGE */}
+    <div className="h-48 overflow-hidden">
+      <img
+        src={image}
+        alt={title}
+        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+      />
+    </div>
+
+    {/* CONTENT */}
+    <div className="p-5 text-center">
+      <h3 className="text-lg font-bold text-[#6E1F32] transition group-hover:text-[#CF3650]">
+        {title}
+      </h3>
+
+      <p className="mt-2 text-sm leading-6 text-[#6F5B60]">
+        {desc}
+      </p>
+
+      <div className="mt-4 flex items-center justify-center gap-2 text-sm font-bold text-[#CF3650]">
+        Learn More
+        <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+      </div>
+    </div>
+  {/* </Link>
+))} */}
+
+          {/* BOTTOM HOVER LINE */}
+          <div className="absolute bottom-0 left-0 h-1 w-0 bg-[#E85B73] transition-all duration-500 group-hover:w-full" />
+        </Link>
+      ))}
+    </div>
+  </div>
+</section>
+
+      {/* =====================================================
+          DOCTOR
+      ====================================================== */}
+
+      <section
+        id="doctor"
+        className="scroll-mt-24 py-6 lg:py-7 bg-white"
+      >
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          <div className="text-center max-w-3xl mx-auto mb-5">
+
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#CF3650]">
+              Meet Our Specialist
+            </p>
+
+            <h2 className="mt-4 text-3xl md:text-4xl lg:text-5xl font-bold text-[#6E1F32]">
+              Experienced Care You Can Trust
             </h2>
 
-            <p className="mt-4 text-[#667085] leading-7">
-              Professional gynecological services designed to support your
-              health, comfort and well-being.
-            </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {services.map(({ icon: Icon, title, desc, tone }) => (
-              <div
-                key={title}
-                className="group rounded-2xl border border-slate-100 bg-white p-7 shadow-sm hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
-              >
-                <div
-                  className={`w-14 h-14 rounded-xl flex items-center justify-center ${
-                    tone === "sage" ? "bg-[#E7EFE9]" : "bg-[#F7E8EA]"
-                  }`}
-                >
-                  <Icon
-                    className={`h-7 w-7 ${
-                      tone === "sage" ? "text-[#6F8F7A]" : "text-[#D98C9A]"
-                    }`}
-                  />
+          <div className="grid lg:grid-cols-[0.9fr_1.1fr] overflow-hidden rounded-3xl bg-[#FFF7F8] shadow-sm">
+
+            {/* IMAGE */}
+
+            <div className="relative min-h-[520px]">
+
+              <img
+                src="/dr image.jpeg"
+                alt="Prof. Dr. Ambreen Akhtar"
+                className="absolute inset-0 w-full h-full object-cover object-top"
+              />
+
+            </div>
+
+            {/* DETAILS */}
+
+            <div className="p-8 md:p-12 lg:p-14 flex flex-col justify-center">
+
+              <p className="text-sm uppercase tracking-[0.16em] font-bold text-[#E85B73]">
+                Consultant Gynaecologist
+              </p>
+
+              <h3 className="mt-3 text-3xl md:text-4xl font-bold text-[#6E1F32]">
+                Prof. Dr. Ambreen Akhtar
+              </h3>
+
+              <p className="mt-3 font-semibold text-[#CF3650]">
+                Specialist in Gynaecology & Gynae Oncology
+              </p>
+
+              <div className="mt-5">
+
+                <p className="text-sm font-bold uppercase tracking-wider text-[#6E1F32]">
+                  Qualifications
+                </p>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+
+                  {[
+                    "MBBS",
+                    "FCPS",
+                    "MCPS",
+                    "CHPE",
+                    "FIMSA (India)",
+                    "Masters in Gynae Oncology (Spain)",
+                  ].map((qualification) => (
+                    <span
+                      key={qualification}
+                      className="bg-white border border-[#F0D8DD] px-4 py-2 text-sm text-[#5E4750]"
+                    >
+                      {qualification}
+                    </span>
+                  ))}
+
                 </div>
 
-                <h3 className="mt-5 text-xl font-bold text-[#172B49]">
-                  {title}
-                </h3>
-
-                <p className="mt-3 text-sm text-[#667085] leading-6">{desc}</p>
-
-                <div className="mt-5 h-1 w-10 rounded-full bg-[#D98C9A] group-hover:w-16 transition-all duration-300" />
               </div>
-            ))}
+
+              <div className="mt-6">
+
+                <p className="text-sm font-bold uppercase tracking-wider text-[#6E1F32]">
+                  Areas of Expertise
+                </p>
+
+                <div className="mt-4 grid sm:grid-cols-2 gap-3">
+
+                  {[
+                    "Comprehensive Gynaecology",
+                    "Pregnancy & Antenatal Care",
+                    "High-Risk Pregnancy",
+                    "Gynae Oncology",
+                    "PCOS & Hormonal Health",
+                    "Reproductive Healthcare",
+                  ].map((item) => (
+                    <div
+                      key={item}
+                      className="flex items-start gap-2"
+                    >
+                      <CheckCircle2 className="w-4 h-4 mt-1 text-[#CF3650] shrink-0" />
+
+                      <span className="text-sm text-[#6F5B60]">
+                        {item}
+                      </span>
+                    </div>
+                  ))}
+
+                </div>
+
+              </div>
+
+              <div className="mt-5 flex flex-wrap gap-3">
+
+                <Link
+                  to={primaryAction.to}
+                  className="appointment-btn"
+                >
+                  Book Appointment
+
+                  <ArrowRight className="w-5 h-5" />
+                </Link>
+
+                <a
+                  href="https://wa.me/923180082848"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 border 
+                  border-[#6E1F32] text-[#6E1F32] px-6 py-3.5 rounded-full font-semibold hover:bg-[#CF3650] hover:text-white transition"
+                >
+                  <Phone className="w-5 h-5" />
+
+                  Call Now
+                </a>
+
+              </div>
+
+            </div>
+
           </div>
+
         </div>
+
       </section>
 
       {/* =====================================================
           WHY CHOOSE US
       ====================================================== */}
-      <section className="bg-white py-20">
+
+      <section className="bg-[#8F2338] py-6 lg:py-7">
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <span className="text-sm font-semibold uppercase tracking-wider text-[#6F8F7A]">
-              Why Elite Gynaecology
-            </span>
 
-            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-[#172B49]">
-              A better way to manage your care.
-            </h2>
-          </div>
+          <div className="grid lg:grid-cols-[0.8fr_1.2fr] gap-5 lg:gap-5">
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {features.map(({ icon: Icon, title, desc }) => (
-              <div
-                key={title}
-                className="rounded-2xl border border-slate-100 bg-[#FAFAF7] p-6 text-center hover:border-[#6F8F7A]/40 hover:shadow-md transition"
+            <div>
+
+              <p className="text-sm uppercase tracking-[0.18em] font-bold text-[#E85B73]">
+                Why Choose Us
+              </p>
+
+              <h2 className="mt-4 text-3xl md:text-4xl font-bold text-white leading-tight">
+                Women's Healthcare Focused on You
+              </h2>
+
+              <p className="mt-5 leading-7 text-slate-300">
+                Professional expertise combined with compassionate,
+                personalized and organized healthcare.
+              </p>
+
+              <Link
+                to={primaryAction.to}
+                className="appointment-btn"
               >
-                <div className="mx-auto w-14 h-14 rounded-full bg-[#E7EFE9] flex items-center justify-center">
-                  <Icon className="h-6 w-6 text-[#6F8F7A]" />
-                </div>
+                Book Your Consultation
 
-                <h3 className="mt-5 font-bold text-[#172B49]">{title}</h3>
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition" />
+              </Link>
 
-                <p className="mt-2 text-sm text-[#667085] leading-6">{desc}</p>
-              </div>
-            ))}
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-px bg-white/15">
+
+              {features.map(
+                ({ icon: Icon, title, desc }) => (
+
+                  <div
+                    key={title}
+                    className="bg-[#8F2338] p-7 hover:bg-[#A92B43] transition"
+                  >
+
+                    <Icon className="w-8 h-8 text-[#E85B73]" />
+
+                    <h3 className="mt-5 text-xl font-bold text-white">
+                      {title}
+                    </h3>
+
+                    <p className="mt-3 text-sm leading-6 text-slate-300">
+                      {desc}
+                    </p>
+
+                  </div>
+
+                )
+              )}
+
+            </div>
+
           </div>
+
         </div>
+
       </section>
 
       {/* =====================================================
-          OUR DOCTOR
-      ====================================================== */}
-      <section id="doctor" className="scroll-mt-24 bg-[#F7E8EA] py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Section Heading */}
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-[#6F8F7A]">
-              Meet Our Specialist
-            </span>
+    PATIENT CARE / DIGITAL FACILITIES
+====================================================== */}
 
-            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-[#172B49]">
-              Expert Care. Trusted Experience.
+<section className="relative overflow-hidden bg-[#FFF7F8] py-6 lg:py-7">
+  {/* Decorative background */}
+  <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-[#FCEBED]/70 blur-3xl" />
+  <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-[#FDE6EA]/60 blur-3xl" />
+
+  <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    {/* Heading */}
+    <div className="text-center max-w-3xl mx-auto">
+      <span className="inline-flex items-center gap-2 rounded-full bg-[#FCEBED] px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-[#CF3650]">
+        <span className="h-2 w-2 rounded-full bg-[#E85B73]" />
+        Patient Facilities
+      </span>
+
+      <h2 className="mt-5 text-3xl md:text-4xl lg:text-5xl font-bold text-[#6E1F32]">
+        Modern Care.
+        <span className="text-[#CF3650]"> Simple Experience.</span>
+      </h2>
+
+      <p className="mt-5 max-w-2xl mx-auto text-[#6F5B60] leading-7">
+        Digital healthcare facilities designed to make appointments,
+        medical information and patient care easier to manage.
+      </p>
+    </div>
+
+    {/* Facility Cards */}
+   <div className="mt-5 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  {[
+    {
+      title: "Online Booking",
+      desc: "Schedule and manage your appointments conveniently online.",
+    },
+    {
+      title: "Medical Records",
+      desc: "Keep your healthcare information organized and accessible.",
+    },
+    {
+      title: "Reports",
+      desc: "View and manage your medical reports from one secure place.",
+    },
+    {
+      title: "Patient Portal",
+      desc: "Access your healthcare services through a simple digital portal.",
+    },
+  ].map(({ title, desc }) => (
+    <div
+      key={title}
+      className="group rounded-xl border border-[#F0D8DD] bg-white px-5 py-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#CF3650]/40 hover:shadow-md"
+    >
+      <h3 className="text-lg font-bold text-[#6E1F32] transition-colors duration-300 group-hover:text-[#CF3650]">
+        {title}
+      </h3>
+
+      <p className="mt-2 text-sm leading-6 text-[#6F5B60]">
+        {desc}
+      </p>
+ 
+  
+
+          {/* Bottom decoration */}
+          {/* <div className="mt-6 flex items-center gap-2 text-sm font-semibold text-[#CF3650]">
+            <span>Patient Service</span>
+
+            <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-2" />
+          </div> */}
+
+          {/* Hover bottom line */}
+          <div className="absolute bottom-0 left-0 h-1 w-0 bg-gradient-to-r from-[#CF3650] to-[#E85B73] transition-all duration-500 group-hover:w-full" />
+        </div>
+      ))}
+    </div>
+
+    {/* Bottom message */}
+    <div className="mt-6 flex flex-col items-center justify-between gap-5 rounded-2xl border border-[#F0D8DD] bg-white/80 px-6 py-6 shadow-sm backdrop-blur sm:flex-row lg:px-8">
+      <div className="flex items-center gap-4">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#FDE6EA]">
+          <ShieldCheck className="h-6 w-6 text-[#E85B73]" />
+        </div>
+
+        <div>
+          <h4 className="font-bold text-[#6E1F32]">
+            Your healthcare, organized in one place
+          </h4>
+
+          <p className="mt-1 text-sm text-[#6F5B60]">
+            Convenient access with privacy and patient-focused care.
+          </p>
+        </div>
+      </div>
+
+      <Link
+        to={primaryAction.to}
+        className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#6E1F32] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#CF3650]"
+      >
+        Get Started
+        <ArrowRight className="h-4 w-4" />
+      </Link>
+    </div>
+  </div>
+</section>
+      {/* =====================================================
+          FAQ
+      ====================================================== */}
+
+      <section className="py-6 lg:py-7 bg-white">
+
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          <div className="text-center max-w-3xl mx-auto">
+
+            <p className="text-sm uppercase tracking-[0.18em] font-bold text-[#CF3650]">
+              Frequently Asked Questions
+            </p>
+
+            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-[#6E1F32]">
+              How Can We Help?
             </h2>
 
-            <p className="mt-4 text-[#667085] leading-7">
-              Dedicated to providing compassionate, professional and
-              personalized healthcare for women at every stage of life.
-            </p>
           </div>
 
-          {/* Doctor Card */}
-          <div className="max-w-6xl mx-auto overflow-hidden rounded-[2rem] bg-white shadow-xl border border-white">
-            <div className="grid lg:grid-cols-[1.08fr_1fr]">
-              {/* Doctor Image */}
-              <div className="relative bg-[#E7EFE9] min-h-[500px] lg:min-h-[580px] flex items-center justify-center overflow-hidden">
-                <div className="absolute top-8 left-8 w-28 h-28 rounded-full bg-[#F7E8EA] opacity-80" />
+          <div className="mt-6 border-t border-[#F0D8DD]">
 
-                <div className="absolute bottom-8 right-8 w-32 h-32 rounded-full bg-[#6F8F7A]/10" />
+            {faqs.map((faq, index) => (
 
-                <img
-                  src="/dr image.jpeg"
-                  alt="Prof. Dr. Ambreen Akhtar - Gynaecologist"
-                  className="relative z-10 w-full h-full object-cover object-center"
-                />
-              </div>
+              <details
+                key={faq.question}
+                className="group border-b border-[#F0D8DD]"
+              >
 
-              {/* Doctor Information */}
-              <div className="p-8 md:p-10 lg:p-12 flex flex-col justify-center">
-                <span className="inline-flex self-start rounded-full bg-[#F7E8EA] px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#D98C9A]">
-                  Consultant Gynaecologist
-                </span>
+                <summary className="cursor-pointer list-none flex items-center justify-between gap-5 py-6">
 
-                <h3 className="mt-5 text-3xl md:text-4xl font-bold leading-tight text-[#172B49]">
-                  Prof. Dr. Ambreen Akhtar
-                </h3>
+                  <div className="flex items-start gap-4">
 
-                <p className="mt-3 text-[#6F8F7A] font-semibold">
-                  Specialist in Gynaecology & Gynae Oncology
+                    <span className="text-sm font-bold text-[#E85B73]">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+
+                    <h3 className="font-bold text-[#6E1F32]">
+                      {faq.question}
+                    </h3>
+
+                  </div>
+
+                  <ChevronRight className="w-5 h-5 shrink-0 text-[#CF3650] group-open:rotate-90 transition" />
+
+                </summary>
+
+                <p className="pb-6 pl-12 pr-8 leading-7 text-[#6F5B60]">
+                  {faq.answer}
                 </p>
 
-                {/* Qualifications */}
-                <div className="mt-7">
-                  <h4 className="text-sm font-semibold uppercase tracking-wider text-[#172B49]">
-                    Qualifications
-                  </h4>
+              </details>
 
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <span className="rounded-lg bg-[#E7EFE9] px-4 py-2 text-sm font-medium text-[#172B49]">
-                      MBBS
-                    </span>
+            ))}
 
-                    <span className="rounded-lg bg-[#F7E8EA] px-4 py-2 text-sm font-medium text-[#172B49]">
-                      FCPS
-                    </span>
-
-                    <span className="rounded-lg bg-[#E7EFE9] px-4 py-2 text-sm font-medium text-[#172B49]">
-                      MCPS
-                    </span>
-
-                    <span className="rounded-lg bg-[#F7E8EA] px-4 py-2 text-sm font-medium text-[#172B49]">
-                      CHPE
-                    </span>
-
-                    <span className="rounded-lg bg-[#E7EFE9] px-4 py-2 text-sm font-medium text-[#172B49]">
-                      FIMSA (India)
-                    </span>
-
-                    <span className="rounded-lg bg-[#F7E8EA] px-4 py-2 text-sm font-medium text-[#172B49]">
-                      Masters in Gynae Oncology (Spain)
-                    </span>
-                  </div>
-                </div>
-
-                <div className="my-7 h-px bg-slate-100" />
-
-                {/* Areas of Expertise */}
-                <h4 className="text-sm font-semibold uppercase tracking-wider text-[#172B49]">
-                  Areas of Expertise
-                </h4>
-
-                <div className="mt-4 grid sm:grid-cols-2 gap-x-5 gap-y-3">
-                  {[
-                    "Comprehensive Gynecological Care",
-                    "Pregnancy & Antenatal Care",
-                    "High-Risk Pregnancy Management",
-                    "Gynae Oncology",
-                    "PCOS & Hormonal Health",
-                    "Women's Reproductive Health",
-                  ].map((item) => (
-                    <div key={item} className="flex items-start gap-2">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#6F8F7A]" />
-
-                      <span className="text-sm leading-5 text-[#667085]">
-                        {item}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* CTA */}
-                <div className="mt-8">
-                  <Link
-                    to={primaryAction.to}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#172B49] px-6 py-3.5 font-semibold text-white hover:bg-[#6F8F7A] transition duration-300"
-                  >
-                    Book a Consultation
-                    <ArrowRight className="h-5 w-5" />
-                  </Link>
-                </div>
-              </div>
-            </div>
           </div>
+
         </div>
+
       </section>
 
       {/* =====================================================
           CONTACT
       ====================================================== */}
-      <section id="contact" className="scroll-mt-24 bg-white py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12">
-            {/* Contact Information */}
-            <div>
-              <span className="text-sm font-semibold uppercase tracking-wider text-[#6F8F7A]">
-                Contact Us
-              </span>
 
-              <h2 className="mt-4 text-3xl md:text-4xl font-bold text-[#172B49]">
-                We're here to help.
+      <section
+        id="contact"
+        className="scroll-mt-24 bg-[#FFF7F8] py-6 lg:py-7"
+      >
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          <div className="grid lg:grid-cols-2">
+
+            {/* CONTACT DETAILS */}
+
+            <div className="bg-white p-8 md:p-12">
+
+              <p className="text-sm uppercase tracking-[0.18em] font-bold text-[#CF3650]">
+                Contact Us
+              </p>
+
+              <h2 className="mt-4 text-3xl md:text-4xl font-bold text-[#6E1F32]">
+                Get in Touch
               </h2>
 
-              <p className="mt-4 text-[#667085] leading-7 max-w-lg">
-                Have a question or want to schedule a consultation? Get in touch
-                with Elite Gynaecology Lahore.
+              <p className="mt-4 leading-7 text-[#6F5B60]">
+                Contact Elite Gynaecology Lahore for appointments and
+                consultation information.
               </p>
 
-              <div className="mt-8 space-y-5">
-                {/* Address */}
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-[#E7EFE9] flex items-center justify-center shrink-0">
-                    <MapPin className="w-5 h-5 text-[#6F8F7A]" />
-                  </div>
+              <div className="mt-5 space-y-6">
+
+                <div className="flex gap-4">
+
+                  <MapPin className="w-6 h-6 text-[#F5A900] shrink-0" />
 
                   <div>
-                    <h4 className="font-bold text-[#172B49]">Clinic Address</h4>
+                    <p className="font-bold text-[#6E1F32]">
+                      Clinic Address
+                    </p>
 
-                    <p className="mt-1 text-[#667085]">Lahore, Pakistan</p>
+                    <p className="mt-1 text-sm text-[#6F5B60]">
+                      Lahore, Pakistan
+                    </p>
                   </div>
+
                 </div>
 
-                {/* Phone */}
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-[#F7E8EA] flex items-center justify-center shrink-0">
-                    <Phone className="w-5 h-5 text-[#D98C9A]" />
-                  </div>
+                <div className="flex gap-4">
+
+                  <Phone className="w-6 h-6 text-[#F5A900] shrink-0" />
 
                   <div>
-                    <h4 className="font-bold text-[#172B49]">Phone</h4>
+                    <p className="font-bold text-[#6E1F32]">
+                      Phone
+                    </p>
 
-                    <p className="mt-1 text-[#667085]">+92 318 0082848</p>
+                    <a
+                      href="https://wa.me/923180082848"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                      className="mt-1 block text-sm text-[#6F5B60] hover:text-[#CF3650]"
+                    >
+                      +92 318 0082848
+                    </a>
                   </div>
+
                 </div>
 
-                {/* Email */}
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-[#E7EFE9] flex items-center justify-center shrink-0">
-                    <Mail className="w-5 h-5 text-[#6F8F7A]" />
-                  </div>
+                <div className="flex gap-4">
+
+                  <Mail className="w-6 h-6 text-[#F5A900] shrink-0" />
 
                   <div>
-                    <h4 className="font-bold text-[#172B49]">Email</h4>
+                    <p className="font-bold text-[#6E1F32]">
+                      Email
+                    </p>
 
-                    <p className="mt-1 text-[#667085]">
+                    <a
+                      href="mailto:doctorambreenakhtar@gmail.com"
+                      className="mt-1 block text-sm text-[#6F5B60] break-all hover:text-[#CF3650]"
+                    >
                       doctorambreenakhtar@gmail.com
-                    </p>
+                    </a>
                   </div>
+
                 </div>
 
-                {/* Clinic Hours */}
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-[#F7E8EA] flex items-center justify-center shrink-0">
-                    <Clock className="w-5 h-5 text-[#D98C9A]" />
-                  </div>
+                <div className="flex gap-4">
+
+                  <Clock className="w-6 h-6 text-[#F5A900] shrink-0" />
 
                   <div>
-                    <h4 className="font-bold text-[#172B49]">Clinic Hours</h4>
+                    <p className="font-bold text-[#6E1F32]">
+                      Clinic Hours
+                    </p>
 
-                    <p className="mt-1 text-[#667085]">
-                      Monday - Saturday • 9:00 AM - 6:00 PM
+                    <p className="mt-1 text-sm text-[#6F5B60]">
+                      Monday - Saturday
                     </p>
                   </div>
+
                 </div>
+
               </div>
+
             </div>
 
-            {/* Contact Card */}
-            <div className="rounded-3xl bg-[#FAFAF7] border border-slate-100 p-7 md:p-9 shadow-sm">
-              <h3 className="text-2xl font-bold text-[#172B49]">
-                Book a Consultation
+            {/* APPOINTMENT CTA */}
+
+            <div className="bg-[#FCEBED] p-8 md:p-12 flex flex-col justify-center">
+
+              <UserRoundCheck className="w-12 h-12 text-[#CF3650]" />
+
+              <h3 className="mt-6 text-3xl font-bold text-[#6E1F32]">
+                Need a Consultation?
               </h3>
 
-              <p className="mt-2 text-[#667085]">
-                Take the first step toward better women's healthcare.
+              <p className="mt-4 max-w-md leading-7 text-[#6F5B60]">
+                Schedule an appointment and get professional women's
+                healthcare with personalized attention.
               </p>
 
-              <div className="mt-7 space-y-4">
-                <input
-                  type="text"
-                  placeholder="Your Name"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 outline-none focus:border-[#6F8F7A] transition"
-                />
+              <Link
+                to={primaryAction.to}
+                className="mt-6 self-start inline-flex items-center gap-2 bg-[#6E1F32] text-white px-7 py-4 font-semibold hover:bg-[#CF3650] transition"
+              >
+                {primaryAction.label}
 
-                <input
-                  type="email"
-                  placeholder="Email Address"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 outline-none focus:border-[#6F8F7A] transition"
-                />
+                <ArrowRight className="w-5 h-5" />
+              </Link>
 
-                <input
-                  type="tel"
-                  placeholder="Phone Number"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 outline-none focus:border-[#6F8F7A] transition"
-                />
-
-                <textarea
-                  rows="4"
-                  placeholder="How can we help you?"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 outline-none focus:border-[#6F8F7A] transition resize-none"
-                />
-
-                <Link
-                  to={primaryAction.to}
-                  className="w-full inline-flex justify-center items-center gap-2 rounded-xl bg-[#172B49] px-6 py-3.5 font-semibold text-white hover:bg-[#6F8F7A] transition"
-                >
-                  Book an Appointment
-                  <ArrowRight className="h-5 w-5" />
-                </Link>
-              </div>
             </div>
+
           </div>
+
         </div>
+
       </section>
 
       {/* =====================================================
           FINAL CTA
       ====================================================== */}
-      <section className="bg-[#172B49] py-16">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white">
-            Your health deserves expert care.
+
+      <section className="relative overflow-hidden bg-[#8F2338] py-6 lg:py-7">
+
+        <div className="absolute -top-28 -right-20 w-80 h-80 rounded-full border border-white/10" />
+
+        <div className="relative max-w-4xl mx-auto px-4 text-center">
+
+          <p className="text-sm uppercase tracking-[0.18em] font-bold text-[#E85B73]">
+            Elite Gynaecology Lahore
+          </p>
+
+          <h2 className="mt-4 text-3xl md:text-4xl font-bold text-white">
+            Your Health Deserves Expert Care
           </h2>
 
           <p className="mt-4 text-slate-300">
-            Schedule your consultation with Elite Gynaecology Lahore today.
+            Schedule your consultation with Prof. Dr. Ambreen Akhtar.
           </p>
 
           <Link
             to={primaryAction.to}
-            className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#6F8F7A] px-7 py-3.5 font-semibold text-white hover:bg-[#D98C9A] transition"
+            className="mt-6 inline-flex items-center gap-2 bg-[#E85B73] text-white px-7 py-4 font-semibold hover:bg-[#CF3650] transition"
           >
             {primaryAction.label}
-            <ArrowRight className="h-5 w-5" />
+
+            <ArrowRight className="w-5 h-5" />
           </Link>
+
         </div>
+
       </section>
+
     </div>
   );
 };

@@ -1,12 +1,20 @@
 require("dotenv").config();
+
 const mongoose = require("mongoose");
 const User = require("./models/User");
 const Blog = require("./models/Blog");
 
+// =====================================================
+// DEFAULT DOCTOR CONFIGURATION
+// IMPORTANT:
+// Password is NEVER hard-coded here.
+// It must come from backend/.env as:
+// DOCTOR_SEED_PASSWORD=your-strong-password
+// =====================================================
+
 const DEFAULT_DOCTOR = {
   name: "Dr. Ambreen Akhtar",
   email: "doctor@elitegynaecology.com",
-  password: "REMOVED_OLD_PASSWORD",
   phone: "03001234567",
   specialization: "Gynaecologist & Women's Health Specialist",
   qualification: "MBBS, FCPS",
@@ -15,6 +23,10 @@ const DEFAULT_DOCTOR = {
   country: "Pakistan",
   isActive: true,
 };
+
+// =====================================================
+// DEFAULT BLOGS
+// =====================================================
 
 const BLOGS = [
   {
@@ -55,55 +67,139 @@ const BLOGS = [
   },
 ];
 
+// =====================================================
+// SEED DATABASE
+// =====================================================
+
 async function seed() {
   try {
-    await mongoose.connect(
-      process.env.MONGODB_URI || "mongodb://localhost:27017/elite_gynaecology",
-    );
+    // -------------------------------------------------
+    // Validate required environment variables
+    // -------------------------------------------------
+
+    if (!process.env.MONGODB_URI) {
+      throw new Error(
+        "MONGODB_URI is missing. Add it to your backend/.env file.",
+      );
+    }
+
+    if (!process.env.DOCTOR_SEED_PASSWORD) {
+      throw new Error(
+        "DOCTOR_SEED_PASSWORD is missing. Add it to your backend/.env file.",
+      );
+    }
+
+    const doctorPassword = process.env.DOCTOR_SEED_PASSWORD;
+
+    // -------------------------------------------------
+    // Connect MongoDB
+    // -------------------------------------------------
+
+    await mongoose.connect(process.env.MONGODB_URI);
+
     console.log("MongoDB connected.");
 
-    // Keep one configured doctor for this single-doctor clinic.
+    // -------------------------------------------------
+    // Single Doctor Clinic
+    // -------------------------------------------------
+
     await User.deleteMany({
       role: "doctor",
       email: { $ne: DEFAULT_DOCTOR.email },
     });
 
-    let doctor = await User.findOne({ email: DEFAULT_DOCTOR.email });
+    let doctor = await User.findOne({
+      email: DEFAULT_DOCTOR.email,
+      role: "doctor",
+    }).select("+password");
+
+    // -------------------------------------------------
+    // Create doctor if not found
+    // -------------------------------------------------
+
     if (!doctor) {
-      doctor = await User.create(DEFAULT_DOCTOR);
+      doctor = await User.create({
+        ...DEFAULT_DOCTOR,
+        password: doctorPassword,
+      });
+
       console.log("Default doctor created.");
     } else {
-      Object.assign(doctor, DEFAULT_DOCTOR);
-      // Re-save only if the password is not already the desired one.
-      const passwordMatches = await doctor.comparePassword(
-        DEFAULT_DOCTOR.password,
-      );
-      if (!passwordMatches) doctor.password = DEFAULT_DOCTOR.password;
+      // -------------------------------------------------
+      // Update doctor profile
+      // -------------------------------------------------
+
+      doctor.name = DEFAULT_DOCTOR.name;
+      doctor.email = DEFAULT_DOCTOR.email;
+      doctor.phone = DEFAULT_DOCTOR.phone;
+      doctor.specialization = DEFAULT_DOCTOR.specialization;
+      doctor.qualification = DEFAULT_DOCTOR.qualification;
+      doctor.licenseNumber = DEFAULT_DOCTOR.licenseNumber;
+      doctor.role = DEFAULT_DOCTOR.role;
+      doctor.country = DEFAULT_DOCTOR.country;
+      doctor.isActive = DEFAULT_DOCTOR.isActive;
+
+      // -------------------------------------------------
+      // Update password only when different
+      // -------------------------------------------------
+
+      const passwordMatches =
+        await doctor.comparePassword(doctorPassword);
+
+      if (!passwordMatches) {
+        doctor.password = doctorPassword;
+      }
+
       await doctor.save();
+
       console.log("Default doctor updated.");
     }
 
+    // -------------------------------------------------
+    // Seed Blogs
+    // -------------------------------------------------
+
     for (const blogData of BLOGS) {
       await Blog.findOneAndUpdate(
-        { slug: blogData.slug },
+        {
+          slug: blogData.slug,
+        },
         {
           ...blogData,
           authorId: doctor._id,
           authorName: doctor.name,
           isPublished: true,
         },
-        { upsert: true, new: true, setDefaultsOnInsert: true },
+        {
+          upsert: true,
+          new: true,
+          setDefaultsOnInsert: true,
+        },
       );
     }
 
-    console.log("3 published blogs seeded with featured images.");
-    console.log("Doctor login: doctor@elitegynaecology.com / REMOVED_OLD_PASSWORD");
+    console.log("3 published blogs seeded successfully.");
+
+    // IMPORTANT:
+    // Never print passwords or other credentials here.
+    console.log("Doctor account seeded successfully.");
   } catch (error) {
-    console.error("Seed error:", error);
+    console.error("Seed error:", error.message);
     process.exitCode = 1;
   } finally {
-    await mongoose.disconnect();
+    // -------------------------------------------------
+    // Disconnect MongoDB safely
+    // -------------------------------------------------
+
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.disconnect();
+      console.log("MongoDB disconnected.");
+    }
   }
 }
+
+// =====================================================
+// RUN SEED
+// =====================================================
 
 seed();

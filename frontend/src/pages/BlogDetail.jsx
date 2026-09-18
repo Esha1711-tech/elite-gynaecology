@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Calendar, Eye, Tag, User } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../utils/api";
+import DOMPurify from "dompurify";
 
 const API_ORIGIN = import.meta.env.VITE_API_ORIGIN || "http://localhost:5000";
 
@@ -82,7 +83,59 @@ const BlogDetail = () => {
 
             {blog.excerpt && <p className="text-lg text-text-light leading-8 mb-8">{blog.excerpt}</p>}
 
-            <div className="text-text-dark leading-8 whitespace-pre-wrap break-words">{blog.content}</div>
+           <div
+  className="
+    text-text-dark
+    leading-8
+    break-words
+
+    [&_h1]:text-3xl
+    [&_h1]:font-bold
+    [&_h1]:text-accent-navy
+    [&_h1]:mt-8
+    [&_h1]:mb-4
+
+    [&_h2]:text-2xl
+    [&_h2]:font-bold
+    [&_h2]:text-accent-navy
+    [&_h2]:mt-7
+    [&_h2]:mb-3
+
+    [&_h3]:text-xl
+    [&_h3]:font-semibold
+    [&_h3]:text-accent-navy
+    [&_h3]:mt-6
+    [&_h3]:mb-3
+
+    [&_p]:mb-4
+
+    [&_ul]:list-disc
+    [&_ul]:pl-6
+    [&_ul]:mb-4
+
+    [&_ol]:list-decimal
+    [&_ol]:pl-6
+    [&_ol]:mb-4
+
+    [&_li]:mb-2
+
+    [&_blockquote]:border-l-4
+    [&_blockquote]:border-[#CF3650]
+    [&_blockquote]:pl-4
+    [&_blockquote]:italic
+
+    [&_a]:text-[#CF3650]
+    [&_a]:underline
+
+    [&_strong]:font-bold
+  "
+  dangerouslySetInnerHTML={{
+    __html:
+      DOMPurify.sanitize(
+        blog.content || ""
+      ),
+  }}
+/>
           </div>
         </article>
       </div>

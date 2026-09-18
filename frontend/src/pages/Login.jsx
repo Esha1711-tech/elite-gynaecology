@@ -68,6 +68,15 @@ const Login = () => {
             </div>
           </div>
 
+          <div className="flex justify-end -mt-2">
+  <Link
+    to="/forgot-password"
+    className="text-sm text-accent-navy font-medium hover:underline"
+  >
+    Forgot Password?
+  </Link>
+</div>
+
           <div>
             <label className="block text-sm font-medium text-text-dark mb-2">Login As</label>
             <div className="flex gap-4">

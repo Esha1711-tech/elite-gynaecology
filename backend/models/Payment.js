@@ -17,5 +17,20 @@ const paymentSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+paymentSchema.index({
+  doctor: 1,
+  status: 1,
+  currency: 1,
+});
+
+paymentSchema.index({
+  patient: 1,
+  createdAt: -1,
+});
+
+paymentSchema.index({
+  doctor: 1,
+  createdAt: -1,
+});
 
 module.exports = mongoose.models.Payment || mongoose.model("Payment", paymentSchema);

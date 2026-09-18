@@ -3,34 +3,61 @@ const User = require("../models/User");
 
 const auth = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    // Primary authentication:
+    // HttpOnly cookie
+    let token = req.cookies?.auth_token;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    // Temporary Bearer fallback keeps Postman/API
+    // testing compatible during migration.
+    if (!token) {
+      const authHeader =
+        req.headers.authorization;
+
+      if (
+        authHeader &&
+        authHeader.startsWith("Bearer ")
+      ) {
+        token =
+          authHeader.split(" ")[1];
+      }
+    }
+
+    if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Authentication token required.",
+        message:
+          "Authentication required.",
       });
     }
 
-    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    const user = await User.findById(decoded.id).select("-password");
+    const user =
+      await User.findById(
+        decoded.id
+      ).select("-password");
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "User no longer exists.",
+        message:
+          "User no longer exists.",
       });
     }
 
     if (!user.isActive) {
       return res.status(403).json({
         success: false,
-        message: "Your account is inactive.",
+        message:
+          "Your account is inactive.",
       });
     }
+
+    // Do not trust role stored in JWT alone.
+    // Current database role is authoritative.
 
     req.user = {
       id: user._id,
@@ -40,38 +67,51 @@ const auth = async (req, res, next) => {
       country: user.country,
     };
 
-    next();
+    return next();
   } catch (error) {
-    console.error("Auth middleware error:", error.message);
+    if (
+      error.name !==
+        "JsonWebTokenError" &&
+      error.name !==
+        "TokenExpiredError"
+    ) {
+      console.error(
+        "Auth middleware error:",
+        error.message
+      );
+    }
 
     return res.status(401).json({
       success: false,
-      message: "Invalid or expired authentication token.",
+      message:
+        "Invalid or expired authentication session.",
     });
   }
 };
-
-// =====================================================
-// ROLE AUTHORIZATION
-// =====================================================
 
 const authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required.",
+        message:
+          "Authentication required.",
       });
     }
 
-    if (!roles.includes(req.user.role)) {
+    if (
+      !roles.includes(
+        req.user.role
+      )
+    ) {
       return res.status(403).json({
         success: false,
-        message: "You are not authorized for this action.",
+        message:
+          "You are not authorized for this action.",
       });
     }
 
-    next();
+    return next();
   };
 };
 

@@ -4,13 +4,17 @@ const {
   registerDoctor,
   registerPatient,
   login,
+  logout,
   getMe,
   forgotPassword,
+  resetPassword,
   getDoctors,
   getDoctor,
 } = require("../controllers/authController");
 
-const { auth } = require("../middleware/auth");
+const {
+  auth,
+} = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -18,29 +22,63 @@ const router = express.Router();
 // AUTH
 // =====================================================
 
-// Patient Registration
-router.post("/register/patient", registerPatient);
+// Patient registration
+router.post(
+  "/register/patient",
+  registerPatient
+);
 
-// Doctor Registration
-router.post("/register/doctor", registerDoctor);
+// Doctor registration intentionally disabled
+router.post(
+  "/register/doctor",
+  registerDoctor
+);
 
 // Login
-router.post("/login", login);
+router.post(
+  "/login",
+  login
+);
 
-// Current User
-router.get("/me", auth, getMe);
+// Logout
+router.post(
+  "/logout",
+  logout
+);
 
-// Forgot Password
-router.post("/forgot-password", forgotPassword);
+// Current authenticated user
+router.get(
+  "/me",
+  auth,
+  getMe
+);
+
+// =====================================================
+// PASSWORD RECOVERY
+// =====================================================
+
+router.post(
+  "/forgot-password",
+  forgotPassword
+);
+
+router.post(
+  "/reset-password/:token",
+  resetPassword
+);
 
 // =====================================================
 // DOCTORS
 // =====================================================
 
-// Get all doctors
-router.get("/doctors", getDoctors);
+router.get(
+  "/doctors",
+  getDoctors
+);
 
-// Get single doctor
-router.get("/doctors/:id", getDoctor);
+router.get(
+  "/doctors/:id",
+  getDoctor
+);
 
 module.exports = router;

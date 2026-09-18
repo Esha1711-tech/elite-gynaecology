@@ -1,14 +1,57 @@
-import { Navigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import {
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 
-const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { user, loading } = useAuth()
+import { useAuth } from "../context/AuthContext";
 
-  if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>
-  if (!user) return <Navigate to="/login" />
-  if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/" />
+const ProtectedRoute = ({
+  children,
+  allowedRoles,
+}) => {
+  const {
+    user,
+    loading,
+  } = useAuth();
 
-  return children
-}
+  const location =
+    useLocation();
 
-export default ProtectedRoute
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{
+          from: location,
+        }}
+      />
+    );
+  }
+
+  if (
+    allowedRoles &&
+    !allowedRoles.includes(
+      user.role
+    )
+  ) {
+    return (
+      <Navigate
+        to="/"
+        replace
+      />
+    );
+  }
+
+  return children;
+};
+
+export default ProtectedRoute;

@@ -13,5 +13,14 @@ const medicalReportSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+medicalReportSchema.index({
+  patient: 1,
+  createdAt: -1,
+});
+
+medicalReportSchema.index({
+  doctor: 1,
+  createdAt: -1,
+});
 
 module.exports = mongoose.models.MedicalReport || mongoose.model("MedicalReport", medicalReportSchema);
