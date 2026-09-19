@@ -64,49 +64,44 @@ app.use(
 // CORS
 // =====================================================
 
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  !isProduction
-    ? "http://localhost:5173"
-    : null,
-].filter(Boolean);
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin) {
+      return callback(null, true);
+    }
 
-app.use(
-  cors({
-    origin(origin, callback) {
-      if (!origin) {
-        return callback(null, true);
-      }
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+    const error = new Error("Origin not allowed by CORS.");
+    error.status = 403;
+    return callback(error);
+  },
 
-      const error = new Error(
-        "Origin not allowed by CORS."
-      );
+  credentials: true,
 
-      error.status = 403;
-      return callback(error);
-    },
+  methods: [
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS",
+  ],
 
-    credentials: true,
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+  ],
+};
 
-    methods: [
-      "GET",
-      "POST",
-      "PUT",
-      "PATCH",
-      "DELETE",
-      "OPTIONS",
-    ],
+app.use(cors(corsOptions));
 
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-    ],
-  })
-);
+// Explicitly handle browser preflight requests
+app.options("*", cors(corsOptions));
+
+ 
  
 
 // =====================================================
