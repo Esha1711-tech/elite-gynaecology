@@ -10,3 +10,5 @@ frontend/node_modules/
 
 # User uploads - NEVER commit
 backend/uploads/
+.vercel
+.env*
