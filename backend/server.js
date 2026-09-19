@@ -1,13 +1,8 @@
 require("dotenv").config();
 
-// console.log("EMAIL_USER loaded:", process.env.EMAIL_USER);
-// console.log("EMAIL_PASS loaded:", !!process.env.EMAIL_PASS);
-// console.log("EMAIL_PASS length:", process.env.EMAIL_PASS?.length);
-
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const cookieParser = require("cookie-parser");
-
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -32,7 +27,6 @@ if (!process.env.MONGODB_URI) {
   console.error(
     "MONGODB_URI is missing from environment variables."
   );
-
   process.exit(1);
 }
 
@@ -40,8 +34,6 @@ if (!process.env.MONGODB_URI) {
 // PROXY CONFIGURATION
 // =====================================================
 
-// Needed when deployed behind a trusted reverse proxy.
-// Keep disabled locally unless explicitly configured.
 if (isProduction) {
   app.set("trust proxy", 1);
 }
@@ -64,6 +56,13 @@ app.use(
 // CORS
 // =====================================================
 
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  !isProduction
+    ? "http://localhost:5173"
+    : null,
+].filter(Boolean);
+
 const corsOptions = {
   origin(origin, callback) {
     if (!origin) {
@@ -74,7 +73,10 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    const error = new Error("Origin not allowed by CORS.");
+    const error = new Error(
+      "Origin not allowed by CORS."
+    );
+
     error.status = 403;
     return callback(error);
   },
@@ -98,11 +100,8 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Explicitly handle browser preflight requests
+// Explicit browser preflight handling
 app.options("*", cors(corsOptions));
-
- 
- 
 
 // =====================================================
 // BODY PARSING
@@ -150,8 +149,6 @@ const csrfOriginProtection = (req, res, next) => {
   return next();
 };
 
-// IMPORTANT:
-// app.use comes AFTER the function definition
 app.use(csrfOriginProtection);
 
 // =====================================================
@@ -181,8 +178,6 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 
-  // Successful login requests don't count
-  // against failed-login protection.
   skipSuccessfulRequests: true,
 
   message: {
@@ -192,7 +187,6 @@ const authLimiter = rateLimit({
   },
 });
 
-// Login limiter + global API limiter
 app.use(
   "/api/auth/login",
   authLimiter
@@ -203,19 +197,11 @@ app.use(
   apiLimiter
 );
 
-
-
 // =====================================================
 // IMPORTANT — PRIVATE UPLOADS
 // =====================================================
 
-// DO NOT expose the uploads directory:
-//
-// app.use(
-//   "/uploads",
-//   express.static(...)
-// );
-//
+// DO NOT expose uploads publicly.
 // Medical reports/payment slips should only be accessed
 // through authenticated secure-file endpoints.
 
@@ -323,16 +309,12 @@ app.use(
 // eslint-disable-next-line no-unused-vars
 app.use(
   (err, req, res, next) => {
-    // Log full details on server only.
     console.error(
       `${req.method} ${req.originalUrl}`,
       err
     );
 
-    // -----------------------------------------------
     // FILE SIZE
-    // -----------------------------------------------
-
     if (
       err instanceof multer.MulterError &&
       err.code === "LIMIT_FILE_SIZE"
@@ -344,10 +326,7 @@ app.use(
       });
     }
 
-    // -----------------------------------------------
     // FILE TYPE
-    // -----------------------------------------------
-
     if (
       err.code === "INVALID_FILE_TYPE"
     ) {
@@ -358,10 +337,7 @@ app.use(
       });
     }
 
-    // -----------------------------------------------
     // OTHER MULTER ERRORS
-    // -----------------------------------------------
-
     if (
       err instanceof multer.MulterError
     ) {
@@ -372,10 +348,7 @@ app.use(
       });
     }
 
-    // -----------------------------------------------
     // INVALID MONGODB ID
-    // -----------------------------------------------
-
     if (err.name === "CastError") {
       return res.status(400).json({
         success: false,
@@ -383,10 +356,7 @@ app.use(
       });
     }
 
-    // -----------------------------------------------
     // MONGOOSE VALIDATION
-    // -----------------------------------------------
-
     if (
       err.name === "ValidationError"
     ) {
@@ -397,10 +367,7 @@ app.use(
       });
     }
 
-    // -----------------------------------------------
     // DUPLICATE DATABASE VALUE
-    // -----------------------------------------------
-
     if (err.code === 11000) {
       return res.status(409).json({
         success: false,
@@ -409,10 +376,7 @@ app.use(
       });
     }
 
-    // -----------------------------------------------
     // GENERAL ERROR
-    // -----------------------------------------------
-
     const status =
       Number.isInteger(err.status) &&
       err.status >= 400 &&
