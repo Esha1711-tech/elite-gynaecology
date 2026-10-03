@@ -13,6 +13,28 @@ const getImageUrl = (image) => {
   return `${API_ORIGIN}${image.startsWith("/") ? image : `/${image}`}`;
 };
 
+
+const upsertMeta = (selector, attributes = {}) => {
+  let element = document.head.querySelector(selector);
+  if (!element) {
+    element = document.createElement("meta");
+    document.head.appendChild(element);
+  }
+  Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
+  return element;
+};
+
+const upsertLink = (rel, href) => {
+  let element = document.head.querySelector(`link[rel="${rel}"]`);
+  if (!element) {
+    element = document.createElement("link");
+    element.setAttribute("rel", rel);
+    document.head.appendChild(element);
+  }
+  element.setAttribute("href", href);
+  return element;
+};
+
 const BlogDetail = () => {
   const { slug } = useParams();
   const [blog, setBlog] = useState(null);
@@ -34,6 +56,71 @@ const BlogDetail = () => {
     };
     if (slug) fetchBlog();
   }, [slug]);
+
+  useEffect(() => {
+    if (!blog) return undefined;
+
+    const seo = blog.seo || {};
+    const fallbackDescription = blog.excerpt || "Read the latest women's health article from Elite Gynaecology.";
+    const pageTitle = seo.seoTitle || blog.title || "Elite Gynaecology";
+    const description = seo.metaDescription || fallbackDescription;
+    const canonicalUrl = seo.canonicalUrl || window.location.href;
+    const socialTitle = seo.ogTitle || pageTitle;
+    const socialDescription = seo.ogDescription || description;
+    const socialImage = getImageUrl(seo.ogImage || blog.featuredImage);
+
+    const previousTitle = document.title;
+    document.title = pageTitle;
+
+    upsertMeta('meta[name="description"]', { name: "description", content: description });
+    upsertMeta('meta[name="robots"]', {
+      name: "robots",
+      content: seo.indexPage === false ? "noindex, nofollow" : "index, follow",
+    });
+    upsertMeta('meta[property="og:type"]', { property: "og:type", content: "article" });
+    upsertMeta('meta[property="og:title"]', { property: "og:title", content: socialTitle });
+    upsertMeta('meta[property="og:description"]', { property: "og:description", content: socialDescription });
+    upsertMeta('meta[property="og:url"]', { property: "og:url", content: canonicalUrl });
+    if (socialImage) {
+      upsertMeta('meta[property="og:image"]', { property: "og:image", content: socialImage });
+    }
+    upsertMeta('meta[name="twitter:card"]', { name: "twitter:card", content: socialImage ? "summary_large_image" : "summary" });
+    upsertMeta('meta[name="twitter:title"]', { name: "twitter:title", content: socialTitle });
+    upsertMeta('meta[name="twitter:description"]', { name: "twitter:description", content: socialDescription });
+    if (socialImage) {
+      upsertMeta('meta[name="twitter:image"]', { name: "twitter:image", content: socialImage });
+    }
+    upsertLink("canonical", canonicalUrl);
+
+    const schemaId = "blog-seo-jsonld";
+    let schemaScript = document.getElementById(schemaId);
+    if (!schemaScript) {
+      schemaScript = document.createElement("script");
+      schemaScript.id = schemaId;
+      schemaScript.type = "application/ld+json";
+      document.head.appendChild(schemaScript);
+    }
+
+    schemaScript.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": seo.schemaType || "Article",
+      headline: pageTitle,
+      description,
+      image: socialImage || undefined,
+      datePublished: blog.createdAt || undefined,
+      dateModified: blog.updatedAt || blog.createdAt || undefined,
+      author: {
+        "@type": "Person",
+        name: blog.authorId?.name || blog.authorName || "Dr. Elite Gynaecologist",
+      },
+      mainEntityOfPage: canonicalUrl,
+    });
+
+    return () => {
+      document.title = previousTitle;
+      document.getElementById(schemaId)?.remove();
+    };
+  }, [blog]);
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center">Loading article...</div>;
 

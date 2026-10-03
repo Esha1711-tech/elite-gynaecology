@@ -27,12 +27,40 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
+import api from "../utils/api";
+
+const decodeDisplayText = (value = "") =>
+  String(value)
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#(?:39|x27);/gi, "'");
+
 
 const Home = () => {
   const { user } = useAuth();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [websiteSettings, setWebsiteSettings] = useState(null);
 
-  const heroSlides = [
+  useEffect(() => {
+    let mounted = true;
+    api.get("/website-settings")
+      .then((res) => {
+        if (mounted) setWebsiteSettings(res.data?.settings || null);
+      })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, []);
+
+  const sectionStyle = (section, element, fallback = {}) => {
+    const style = websiteSettings?.contentStyles?.[section]?.[element] || {};
+    return {
+      fontSize: style.fontSize ? `${style.fontSize}px` : fallback.fontSize,
+      color: style.color || fallback.color,
+      textAlign: style.align || fallback.textAlign,
+    };
+  };
+
+  const defaultHeroSlides = [
     {
       image: "/checkup.jpg",
       eyebrow: "Prenatal Excellence",
@@ -53,13 +81,21 @@ const Home = () => {
     },
   ];
 
+  const savedHeroSlides = (websiteSettings?.heroSlides || []).filter((slide) => slide?.isActive !== false);
+  const heroSlides = savedHeroSlides.length ? savedHeroSlides : defaultHeroSlides;
+
   useEffect(() => {
+    if (!heroSlides.length) return undefined;
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
     }, 5000);
 
     return () => clearInterval(timer);
   }, [heroSlides.length]);
+
+  useEffect(() => {
+    if (currentSlide >= heroSlides.length) setCurrentSlide(0);
+  }, [heroSlides.length, currentSlide]);
 
   const goToSlide = (index) => setCurrentSlide(index);
   const previousSlide = () =>
@@ -91,7 +127,7 @@ const Home = () => {
   // SERVICES
   // =========================================================
 
-  const services = [
+  const defaultServices = [
     {
       title: "Comprehensive Gynecology Consultation",
       desc: "Complete gynecological assessment, consultation, diagnosis and personalized care.",
@@ -155,6 +191,20 @@ const Home = () => {
       image: "/services/gynecological-surgeries.jpg",
     },
   ];
+
+  const savedServices = (websiteSettings?.services || []).filter((service) => service?.isActive !== false);
+  const services = savedServices.length
+    ? savedServices.map((service) => ({
+        ...service,
+        title: decodeDisplayText(service.title || ""),
+        desc: decodeDisplayText(service.description || service.desc || ""),
+        imageAlt: decodeDisplayText(service.imageAlt || service.title || ""),
+      }))
+    : defaultServices;
+
+  const about = websiteSettings?.about || {};
+  const doctor = websiteSettings?.doctor || {};
+  const contact = websiteSettings?.contact || {};
 
   // =========================================================
   // WHY CHOOSE US
@@ -233,7 +283,7 @@ const Home = () => {
               <img
                 src={slide.image}
                 alt={slide.title}
-                className="h-full w-full object-cover object-center"
+                className="h-full w-full object-contain object-center md:object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/15" />
             </div>
@@ -242,15 +292,15 @@ const Home = () => {
           <div className="relative z-10 mx-auto flex min-h-[560px] max-w-7xl items-center px-5 sm:px-6 md:min-h-[620px] lg:min-h-[660px] lg:px-8">
             <div className="max-w-3xl pt-8 text-white">
               <p className="text-lg font-bold text-[#F5B1BC] md:text-xl">
-                {heroSlides[currentSlide].eyebrow}
+                {heroSlides[currentSlide]?.eyebrow || "Prenatal Excellence"}
               </p>
 
-              <h1 className="mt-4 max-w-3xl text-4xl font-extrabold leading-[1.03] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
-                {heroSlides[currentSlide].title}
+              <h1 className="mt-4 max-w-3xl text-4xl font-extrabold leading-[1.03] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl" style={sectionStyle("hero", "heading", { color: "#FFFFFF", textAlign: "left" })}>
+                {heroSlides[currentSlide]?.title}
               </h1>
 
-              <p className="mt-5 max-w-2xl text-lg leading-8 text-white/90 md:text-2xl">
-                {heroSlides[currentSlide].text}
+              <p className="mt-5 max-w-2xl text-lg leading-8 text-white/90 md:text-2xl" style={sectionStyle("hero", "text", { color: "#FFFFFF", textAlign: "left" })}>
+                {heroSlides[currentSlide]?.text}
               </p>
 
               <div className="mt-6 flex flex-wrap gap-3">
@@ -388,9 +438,9 @@ const Home = () => {
               <div className="bg-[#FCEBED] p-4 sm:p-7">
 
                 <img
-                  src="/hero-image.png"
-                  alt="Elite Gynaecology"
-                  className="w-full h-[470px] object-cover object-top"
+                  src={about.image || "/hero-image.png"}
+                  alt={about.imageAlt || "Elite Gynaecology"}
+                  className="w-full h-auto max-h-[470px] object-contain object-top md:h-[470px] md:object-cover"
                 />
 
               </div>
@@ -416,27 +466,22 @@ const Home = () => {
             <div>
 
               <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#CF3650]">
-                About Elite Gynaecology
+                {about.eyebrow || "About Elite Gynaecology"}
               </p>
 
-              <h2 className="mt-4 text-3xl md:text-4xl lg:text-5xl font-bold leading-tight text-[#6E1F32]">
-                Complete Women's Healthcare
+              <h2 className="mt-4 text-3xl md:text-4xl lg:text-5xl font-bold leading-tight text-[#6E1F32]" style={sectionStyle("about", "heading", { color: "#6E1F32", textAlign: "left" })}>
+                {about.title || "Complete Women's Healthcare"}
                 <span className="block text-[#E85B73]">
-                  Under Expert Supervision
+                  {about.highlight || "Under Expert Supervision"}
                 </span>
               </h2>
 
-              <p className="mt-4 text-[#6F5B60] leading-8">
-                Elite Gynaecology Lahore provides professional,
-                compassionate and personalized healthcare for women at
-                different stages of life.
+              <p className="mt-4 text-[#6F5B60] leading-8" style={sectionStyle("about", "text", { color: "#6F5B60", textAlign: "left" })}>
+                {about.description1 || "Elite Gynaecology Lahore provides professional, compassionate and personalized healthcare for women at different stages of life."}
               </p>
 
-              <p className="mt-4 text-[#6F5B60] leading-8">
-                From routine gynaecological consultations and pregnancy
-                care to reproductive health, hormonal management and
-                specialized treatment, our focus is on making every
-                patient's healthcare journey comfortable and organized.
+              <p className="mt-4 text-[#6F5B60] leading-8" style={sectionStyle("about", "text", { color: "#6F5B60", textAlign: "left" })}>
+                {about.description2 || "From routine gynaecological consultations and pregnancy care to reproductive health, hormonal management and specialized treatment, our focus is on making every patient's healthcare journey comfortable and organized."}
               </p>
 
               <div className="mt-5 grid sm:grid-cols-2 gap-4 text-center">
@@ -494,19 +539,18 @@ const Home = () => {
         Our Services
       </p>
 
-      <h2 className="mt-3 text-3xl md:text-4xl lg:text-5xl font-bold text-[#6E1F32]">
+      <h2 className="mt-3 text-3xl md:text-4xl lg:text-5xl font-bold text-[#6E1F32]" style={sectionStyle("services", "heading", { color: "#6E1F32", textAlign: "center" })}>
         Complete Women's Healthcare Services
       </h2>
 
-      <p className="mt-4 text-[#6F5B60] leading-7">
-        Comprehensive care designed to support women's health from
-        routine consultations to specialized treatment.
+      <p className="mt-4 text-[#6F5B60] leading-7" style={sectionStyle("services", "text", { color: "#6F5B60", textAlign: "center" })}>
+        Comprehensive care designed to support women's health from routine consultations to specialized treatment.
       </p>
     </div>
 
     {/* SERVICE CARDS */}
     <div className="mt-8 grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-     {services.map(({ title, desc, slug, image }) => (
+     {services.map(({ title, desc, slug, image, imageAlt }) => (
   <Link
     key={slug}
     to={`/services/${slug}`}
@@ -516,8 +560,8 @@ const Home = () => {
     <div className="h-48 overflow-hidden">
       <img
         src={image}
-        alt={title}
-        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+        alt={imageAlt || title}
+        className="h-full w-full object-contain md:object-cover transition-transform duration-500 group-hover:scale-105"
       />
     </div>
 
@@ -564,7 +608,7 @@ const Home = () => {
               Meet Our Specialist
             </p>
 
-            <h2 className="mt-4 text-3xl md:text-4xl lg:text-5xl font-bold text-[#6E1F32]">
+            <h2 className="mt-4 text-3xl md:text-4xl lg:text-5xl font-bold text-[#6E1F32]" style={sectionStyle("doctor", "heading", { color: "#6E1F32", textAlign: "center" })}>
               Experienced Care You Can Trust
             </h2>
 
@@ -574,12 +618,12 @@ const Home = () => {
 
             {/* IMAGE */}
 
-            <div className="relative min-h-[520px]">
+            <div className="relative bg-[#FCEBED] lg:min-h-[520px]">
 
               <img
                 src="/dr image.jpeg"
-                alt="Prof. Dr. Ambreen Akhtar"
-                className="absolute inset-0 w-full h-full object-cover object-top"
+                alt={doctor.name || "Prof. Dr. Ambreen Akhtar"}
+                className="relative w-full h-auto object-contain object-top lg:absolute lg:inset-0 lg:h-full lg:object-cover"
               />
 
             </div>
@@ -593,11 +637,11 @@ const Home = () => {
               </p>
 
               <h3 className="mt-3 text-3xl md:text-4xl font-bold text-[#6E1F32]">
-                Prof. Dr. Ambreen Akhtar
+                {doctor.name || "Prof. Dr. Ambreen Akhtar"}
               </h3>
 
-              <p className="mt-3 font-semibold text-[#CF3650]">
-                Specialist in Gynaecology & Gynae Oncology
+              <p className="mt-3 font-semibold text-[#CF3650]" style={sectionStyle("doctor", "text", { color: "#CF3650", textAlign: "left" })}>
+                {doctor.specialty || "Specialist in Gynaecology & Gynae Oncology"}
               </p>
 
               <div className="mt-5">
@@ -608,14 +652,10 @@ const Home = () => {
 
                 <div className="mt-4 flex flex-wrap gap-2">
 
-                  {[
-                    "MBBS",
-                    "FCPS",
-                    "MCPS",
-                    "CHPE",
-                    "FIMSA (India)",
-                    "Masters in Gynae Oncology (Spain)",
-                  ].map((qualification) => (
+                  {(doctor.qualifications
+                    ? String(doctor.qualifications).split(",").map((item) => item.trim()).filter(Boolean)
+                    : ["MBBS", "FCPS", "MCPS", "CHPE", "FIMSA (India)", "Masters in Gynae Oncology (Spain)"]
+                  ).map((qualification) => (
                     <span
                       key={qualification}
                       className="bg-white border border-[#F0D8DD] px-4 py-2 text-sm text-[#5E4750]"

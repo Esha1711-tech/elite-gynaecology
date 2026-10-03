@@ -1,18 +1,56 @@
 const express = require("express");
+const mongoose = require("mongoose");
+
 const router = express.Router();
 
 const User = require("../models/User");
 const Appointment = require("../models/Appointment");
-const Prescription = require("../models/Prescription");
 const MedicalRecord = require("../models/MedicalRecord");
+const Prescription = require("../models/Prescription");
+const Payment = require("../models/Payment");
 const MedicalReport = require("../models/MedicalReport");
 
-const { auth, authorize } = require("../middleware/auth");
+const {
+  auth,
+  authorize,
+} = require("../middleware/auth");
+
+// =====================================================
+// HELPERS
+// =====================================================
+
+const cleanText = (value = "") => {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return "";
+  }
+
+  return String(value)
+    .replace(/<[^>]*>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+const normalizeEmail = (value = "") => {
+  return cleanText(value)
+    .toLowerCase()
+    .trim();
+};
+
+const validObjectId = (id) => {
+  return mongoose.Types.ObjectId.isValid(
+    id
+  );
+};
+
+const patientPublicFields =
+  "-password -resetPasswordToken -resetPasswordExpires -__v";
 
 // =====================================================
 // GET PATIENTS
 // Doctor only
-// Search + Pagination
 // =====================================================
 
 router.get(
@@ -21,94 +59,87 @@ router.get(
   authorize("doctor"),
   async (req, res) => {
     try {
-      // -----------------------------------------------
-      // PAGINATION
-      // -----------------------------------------------
-
       const page = Math.max(
-        parseInt(req.query.page, 10) || 1,
+        Number.parseInt(
+          req.query.page,
+          10
+        ) || 1,
         1
       );
 
       const limit = Math.min(
         Math.max(
-          parseInt(req.query.limit, 10) || 10,
+          Number.parseInt(
+            req.query.limit,
+            10
+          ) || 10,
           1
         ),
-        50
+        100
       );
 
-      const skip = (page - 1) * limit;
-
-      // -----------------------------------------------
-      // BASE QUERY
-      // -----------------------------------------------
-
-      const query = {
-        role: "patient",
-        isActive: true,
-      };
-
-      // -----------------------------------------------
-      // SAFE SEARCH
-      // -----------------------------------------------
+      const skip =
+        (page - 1) * limit;
 
       const search =
-        typeof req.query.search === "string"
-          ? req.query.search.trim()
-          : "";
-
-      if (search) {
-        // Escape special RegExp characters
-        const safeSearch = search.replace(
-          /[.*+?^${}()|[\]\\]/g,
-          "\\$&"
+        cleanText(
+          req.query.search || ""
         );
 
-        query.$or = [
+      const filter = {
+        role: "patient",
+      };
+
+      if (search) {
+        const escapedSearch =
+          search.replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&"
+          );
+
+        filter.$or = [
           {
             name: {
-              $regex: safeSearch,
+              $regex:
+                escapedSearch,
               $options: "i",
             },
           },
           {
             email: {
-              $regex: safeSearch,
+              $regex:
+                escapedSearch,
               $options: "i",
             },
           },
           {
             phone: {
-              $regex: safeSearch,
+              $regex:
+                escapedSearch,
               $options: "i",
             },
           },
         ];
       }
 
-      // -----------------------------------------------
-      // FETCH DATA + COUNT IN PARALLEL
-      // -----------------------------------------------
+      const [
+        patients,
+        total,
+      ] = await Promise.all([
+        User.find(filter)
+          .select(
+            patientPublicFields
+          )
+          .sort({
+            createdAt: -1,
+          })
+          .skip(skip)
+          .limit(limit),
 
-      const [patients, totalPatients] =
-        await Promise.all([
-          User.find(query)
-            .select("-password")
-            .sort({
-              createdAt: -1,
-            })
-            .skip(skip)
-            .limit(limit)
-            .lean(),
-
-          User.countDocuments(query),
-        ]);
-
-      const totalPages = Math.max(
-        Math.ceil(totalPatients / limit),
-        1
-      );
+        User.countDocuments(
+          filter
+        ),
+      ]);
 
       return res.json({
         success: true,
@@ -116,16 +147,13 @@ router.get(
         patients,
 
         pagination: {
-          currentPage: page,
-          totalPages,
-          totalPatients,
+          page,
           limit,
-
-          hasNextPage:
-            page < totalPages,
-
-          hasPreviousPage:
-            page > 1,
+          total,
+          pages:
+            Math.ceil(
+              total / limit
+            ) || 1,
         },
       });
     } catch (error) {
@@ -134,17 +162,504 @@ router.get(
         error
       );
 
-      return res.status(500).json({
-        success: false,
-        message:
-          "Unable to load patients.",
-      });
+      return res
+        .status(500)
+        .json({
+          success: false,
+          message:
+            "Unable to load patients.",
+        });
     }
   }
 );
 
 // =====================================================
-// GET PATIENT COMPLETE HISTORY
+// CREATE PATIENT
+// Doctor manually creates patient
+//
+// IMPORTANT:
+// Password is passed directly to User.create().
+// Do NOT bcrypt.hash() it here if User model already
+// hashes passwords in its pre-save middleware.
+// =====================================================
+
+router.post(
+  "/",
+  auth,
+  authorize("doctor"),
+  async (req, res) => {
+    try {
+      const {
+        name,
+        email,
+        password,
+        phone,
+        country,
+        dateOfBirth,
+        gender,
+        address,
+      } = req.body;
+
+      const cleanName =
+        cleanText(name);
+
+      const cleanEmail =
+        normalizeEmail(email);
+
+      const cleanPhone =
+        cleanText(phone);
+
+      const cleanCountry =
+        cleanText(country);
+
+      const cleanGender =
+        cleanText(gender);
+
+      const cleanAddress =
+        cleanText(address);
+
+      if (!cleanName) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              "Patient name is required.",
+          });
+      }
+
+      if (!cleanEmail) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              "Patient email is required.",
+          });
+      }
+
+      if (
+        !password ||
+        String(password).length <
+          6
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              "Password must be at least 6 characters.",
+          });
+      }
+
+      const existingUser =
+        await User.findOne({
+          email: cleanEmail,
+        });
+
+      if (existingUser) {
+        return res
+          .status(409)
+          .json({
+            success: false,
+            message:
+              "A user with this email already exists.",
+          });
+      }
+
+      let parsedDateOfBirth =
+        undefined;
+
+      if (dateOfBirth) {
+        const parsedDate =
+          new Date(
+            dateOfBirth
+          );
+
+        if (
+          Number.isNaN(
+            parsedDate.getTime()
+          )
+        ) {
+          return res
+            .status(400)
+            .json({
+              success:
+                false,
+              message:
+                "Invalid date of birth.",
+            });
+        }
+
+        parsedDateOfBirth =
+          parsedDate;
+      }
+
+      const patientData = {
+        name: cleanName,
+        email: cleanEmail,
+        password:
+          String(password),
+        role: "patient",
+      };
+
+      if (cleanPhone) {
+        patientData.phone =
+          cleanPhone;
+      }
+
+      if (cleanCountry) {
+        patientData.country =
+          cleanCountry;
+      }
+
+      if (
+        parsedDateOfBirth
+      ) {
+        patientData.dateOfBirth =
+          parsedDateOfBirth;
+      }
+
+      if (cleanGender) {
+        patientData.gender =
+          cleanGender;
+      }
+
+      if (cleanAddress) {
+        patientData.address =
+          cleanAddress;
+      }
+
+      const patient =
+        await User.create(
+          patientData
+        );
+
+      const safePatient =
+        await User.findById(
+          patient._id
+        ).select(
+          patientPublicFields
+        );
+
+      return res
+        .status(201)
+        .json({
+          success: true,
+
+          message:
+            "Patient created successfully.",
+
+          patient:
+            safePatient,
+        });
+    } catch (error) {
+      console.error(
+        "Create patient error:",
+        error
+      );
+
+      if (
+        error?.code ===
+        11000
+      ) {
+        return res
+          .status(409)
+          .json({
+            success: false,
+            message:
+              "A user with this email already exists.",
+          });
+      }
+
+      if (
+        error?.name ===
+        "ValidationError"
+      ) {
+        const firstError =
+          Object.values(
+            error.errors || {}
+          )[0];
+
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              firstError
+                ?.message ||
+              "Invalid patient information.",
+          });
+      }
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+          message:
+            "Unable to create patient.",
+        });
+    }
+  }
+);
+
+// =====================================================
+// UPDATE PATIENT
+// Doctor edits patient profile
+// =====================================================
+
+router.patch(
+  "/:id",
+  auth,
+  authorize("doctor"),
+  async (req, res) => {
+    try {
+      const patientId =
+        req.params.id;
+
+      if (
+        !validObjectId(
+          patientId
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              "Invalid patient ID.",
+          });
+      }
+
+      const patient =
+        await User.findOne({
+          _id: patientId,
+          role: "patient",
+        });
+
+      if (!patient) {
+        return res
+          .status(404)
+          .json({
+            success: false,
+            message:
+              "Patient not found.",
+          });
+      }
+
+      const {
+        name,
+        email,
+        phone,
+        country,
+        dateOfBirth,
+        gender,
+        address,
+      } = req.body;
+
+      if (
+        name !== undefined
+      ) {
+        const cleanName =
+          cleanText(name);
+
+        if (!cleanName) {
+          return res
+            .status(400)
+            .json({
+              success:
+                false,
+              message:
+                "Patient name cannot be empty.",
+            });
+        }
+
+        patient.name =
+          cleanName;
+      }
+
+      if (
+        email !== undefined
+      ) {
+        const cleanEmail =
+          normalizeEmail(
+            email
+          );
+
+        if (!cleanEmail) {
+          return res
+            .status(400)
+            .json({
+              success:
+                false,
+              message:
+                "Patient email cannot be empty.",
+            });
+        }
+
+        const emailExists =
+          await User.findOne({
+            email:
+              cleanEmail,
+            _id: {
+              $ne:
+                patient._id,
+            },
+          });
+
+        if (emailExists) {
+          return res
+            .status(409)
+            .json({
+              success:
+                false,
+              message:
+                "Another user already uses this email.",
+            });
+        }
+
+        patient.email =
+          cleanEmail;
+      }
+
+      if (
+        phone !== undefined
+      ) {
+        patient.phone =
+          cleanText(phone);
+      }
+
+      if (
+        country !==
+        undefined
+      ) {
+        patient.country =
+          cleanText(
+            country
+          );
+      }
+
+      if (
+        gender !== undefined
+      ) {
+        patient.gender =
+          cleanText(gender);
+      }
+
+      if (
+        address !== undefined
+      ) {
+        patient.address =
+          cleanText(address);
+      }
+
+      if (
+        dateOfBirth !==
+        undefined
+      ) {
+        if (!dateOfBirth) {
+          patient.dateOfBirth =
+            undefined;
+        } else {
+          const parsedDate =
+            new Date(
+              dateOfBirth
+            );
+
+          if (
+            Number.isNaN(
+              parsedDate.getTime()
+            )
+          ) {
+            return res
+              .status(400)
+              .json({
+                success:
+                  false,
+                message:
+                  "Invalid date of birth.",
+              });
+          }
+
+          patient.dateOfBirth =
+            parsedDate;
+        }
+      }
+
+      // Password is intentionally not updated here.
+      // Patient editing from the dashboard updates
+      // patient information only.
+
+      await patient.save();
+
+      const safePatient =
+        await User.findById(
+          patient._id
+        ).select(
+          patientPublicFields
+        );
+
+      return res.json({
+        success: true,
+
+        message:
+          "Patient updated successfully.",
+
+        patient:
+          safePatient,
+      });
+    } catch (error) {
+      console.error(
+        "Update patient error:",
+        error
+      );
+
+      if (
+        error?.code ===
+        11000
+      ) {
+        return res
+          .status(409)
+          .json({
+            success: false,
+            message:
+              "Another user already uses this email.",
+          });
+      }
+
+      if (
+        error?.name ===
+        "ValidationError"
+      ) {
+        const firstError =
+          Object.values(
+            error.errors || {}
+          )[0];
+
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              firstError
+                ?.message ||
+              "Invalid patient information.",
+          });
+      }
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+          message:
+            "Unable to update patient.",
+        });
+    }
+  }
+);
+
+// =====================================================
+// GET PATIENT HISTORY
 // Doctor only
 // =====================================================
 
@@ -154,77 +669,87 @@ router.get(
   authorize("doctor"),
   async (req, res) => {
     try {
-      const patient =
-        await User.findOne({
-          _id: req.params.id,
-          role: "patient",
-        })
-          .select("-password")
-          .lean();
+      const patientId =
+        req.params.id;
 
-      if (!patient) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Patient not found.",
-        });
+      if (
+        !validObjectId(
+          patientId
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              "Invalid patient ID.",
+          });
       }
 
-      // Fetch history in parallel
+      const patient =
+        await User.findOne({
+          _id: patientId,
+          role: "patient",
+        }).select(
+          patientPublicFields
+        );
+
+      if (!patient) {
+        return res
+          .status(404)
+          .json({
+            success: false,
+            message:
+              "Patient not found.",
+          });
+      }
+
       const [
         appointments,
+        medicalRecords,
         prescriptions,
+        payments,
         reports,
-        records,
       ] = await Promise.all([
         Appointment.find({
-          patient: patient._id,
+          patientId,
         })
-          .populate(
-            "doctor",
-            "name specialization qualification"
-          )
-          .populate("payment")
-          .sort({
-            appointmentDate: -1,
-          })
-          .lean(),
-
-        Prescription.find({
-          patient: patient._id,
-        })
-          .populate(
-            "doctor",
-            "name specialization qualification"
-          )
           .sort({
             createdAt: -1,
           })
-          .lean(),
-
-        MedicalReport.find({
-          patient: patient._id,
-        })
-          .populate(
-            "doctor",
-            "name specialization"
-          )
-          .sort({
-            createdAt: -1,
-          })
-          .lean(),
+          .catch(() => []),
 
         MedicalRecord.find({
-          patient: patient._id,
+          patientId,
         })
-          .populate(
-            "doctor",
-            "name specialization"
-          )
           .sort({
             createdAt: -1,
           })
-          .lean(),
+          .catch(() => []),
+
+        Prescription.find({
+          patientId,
+        })
+          .sort({
+            createdAt: -1,
+          })
+          .catch(() => []),
+
+        Payment.find({
+          patientId,
+        })
+          .sort({
+            createdAt: -1,
+          })
+          .catch(() => []),
+
+        MedicalReport.find({
+          patientId,
+        })
+          .sort({
+            createdAt: -1,
+          })
+          .catch(() => []),
       ]);
 
       return res.json({
@@ -232,78 +757,27 @@ router.get(
 
         patient,
 
-        appointments,
-        prescriptions,
-        reports,
-        records,
+        history: {
+          appointments,
+          medicalRecords,
+          prescriptions,
+          payments,
+          reports,
+        },
       });
     } catch (error) {
       console.error(
-        "Patient history error:",
+        "Get patient history error:",
         error
       );
 
-      return res.status(500).json({
-        success: false,
-        message:
-          "Unable to load patient history.",
-      });
-    }
-  }
-);
-
-// =====================================================
-// GET SINGLE PATIENT
-// Doctor OR patient themselves
-// =====================================================
-
-router.get(
-  "/:id",
-  auth,
-  async (req, res) => {
-    try {
-      if (
-        req.user.role === "patient" &&
-        req.user.id.toString() !==
-          req.params.id
-      ) {
-        return res.status(403).json({
-          success: false,
-          message: "Access denied.",
-        });
-      }
-
-      const patient =
-        await User.findOne({
-          _id: req.params.id,
-          role: "patient",
-        })
-          .select("-password")
-          .lean();
-
-      if (!patient) {
-        return res.status(404).json({
+      return res
+        .status(500)
+        .json({
           success: false,
           message:
-            "Patient not found.",
+            "Unable to load patient history.",
         });
-      }
-
-      return res.json({
-        success: true,
-        patient,
-      });
-    } catch (error) {
-      console.error(
-        "Get patient error:",
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          "Unable to load patient.",
-      });
     }
   }
 );

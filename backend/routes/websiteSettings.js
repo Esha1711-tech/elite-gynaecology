@@ -1,241 +1,297 @@
 const express = require("express");
-const sanitizeHtml = require("sanitize-html");
-
 const router = express.Router();
 
+const sanitizeHtml = require("sanitize-html");
+
 const WebsiteSettings = require("../models/WebsiteSettings");
-const { auth, authorize } = require("../middleware/auth");
+
+const {
+  auth,
+  authorize,
+} = require("../middleware/auth");
 
 // =====================================================
 // HELPERS
 // =====================================================
 
-const cleanText = (value = "") =>
-  sanitizeHtml(String(value), {
+/*
+ * Decode only the HTML entities that we actually want
+ * to display as normal text.
+ *
+ * IMPORTANT:
+ * We intentionally DO NOT decode &lt; and &gt; here.
+ * sanitizeHtml removes HTML tags first. Decoding those
+ * two entities afterwards could turn encoded markup
+ * back into angle brackets.
+ */
+const decodeHtmlEntities = (value = "") =>
+  String(value)
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&#x27;/gi, "'")
+    .replace(/&nbsp;/gi, " ");
+
+const cleanText = (value = "") => {
+  const sanitized = sanitizeHtml(String(value), {
     allowedTags: [],
     allowedAttributes: {},
-  }).trim();
+  });
 
-const validColor = (value, fallback) => {
-  const color = String(value || "").trim();
-
-  return /^#[0-9A-Fa-f]{6}$/.test(color)
-    ? color
-    : fallback;
+  return decodeHtmlEntities(sanitized).trim();
 };
 
 const cleanImagePath = (value = "") => {
+  if (!value) {
+    return "";
+  }
+
   const image = String(value).trim();
 
-  // Local public asset
-  if (image.startsWith("/") && !image.startsWith("//")) {
+  // Allow local uploaded/static paths.
+  if (image.startsWith("/")) {
     return image;
   }
 
-  // Remote HTTPS image
-  if (image.startsWith("https://")) {
+  // Allow normal HTTP/HTTPS images.
+  if (
+    image.startsWith("https://") ||
+    image.startsWith("http://")
+  ) {
     return image;
   }
 
   return "";
 };
 
+const cleanUrl = (value = "") => {
+  if (!value) {
+    return "";
+  }
+
+  const url = String(value).trim();
+
+  // Allow internal frontend routes.
+  if (url.startsWith("/")) {
+    return url;
+  }
+
+  try {
+    const parsed = new URL(url);
+
+    if (
+      parsed.protocol === "https:" ||
+      parsed.protocol === "http:"
+    ) {
+      return parsed.toString();
+    }
+  } catch (error) {
+    return "";
+  }
+
+  return "";
+};
+
+const cleanStringArray = (value) => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => cleanText(item))
+    .filter(Boolean)
+    .slice(0, 50);
+};
+
+const validColor = (
+  value,
+  fallback = "#4B5563"
+) => {
+  if (
+    typeof value === "string" &&
+    /^#[0-9A-Fa-f]{6}$/.test(value.trim())
+  ) {
+    return value.trim().toUpperCase();
+  }
+
+  return fallback;
+};
+
+const clampNumber = (
+  value,
+  min,
+  max,
+  fallback
+) => {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) {
+    return fallback;
+  }
+
+  return Math.min(
+    Math.max(number, min),
+    max
+  );
+};
+
+const validAlignment = (
+  value,
+  fallback = "left"
+) => {
+  const allowed = [
+    "left",
+    "center",
+    "right",
+  ];
+
+  return allowed.includes(value)
+    ? value
+    : fallback;
+};
+
 // =====================================================
-// DEFAULT SETTINGS
+// CONTENT STYLE SANITIZER
 // =====================================================
 
-const getDefaultSettings = () => ({
-  key: "main",
+const sanitizeContentStyles = (
+  incomingStyles,
+  currentStyles = {}
+) => {
+  /*
+   * Doctor is intentionally included here.
+   *
+   * This means CMS Design controls can now save:
+   * - Doctor heading font size
+   * - Doctor heading color
+   * - Doctor heading alignment
+   * - Doctor text font size
+   * - Doctor text color
+   * - Doctor text alignment
+   */
+  const allowedSections = [
+    "hero",
+    "about",
+    "doctor",
+    "services",
+    "contact",
+  ];
 
-  heroSlides: [
-    {
-      image: "/checkup.jpg",
-      eyebrow: "Prenatal Excellence",
-      title: "Exceptional Maternity Care",
-      text:
-        "A warm, supportive approach to pregnancy, motherhood and every stage of womanhood.",
-      isActive: true,
-      order: 0,
-    },
-    {
-      image: "/services/pregnancy-antenatal-care.jpg",
-      eyebrow: "Pregnancy & Antenatal Care",
-      title: "Care Through Every Trimester",
-      text:
-        "Personalized antenatal support with professional guidance and regular monitoring throughout pregnancy.",
-      isActive: true,
-      order: 1,
-    },
-    {
-      image: "/services/high-risk-pregnancy.jpg",
-      eyebrow: "Specialist Women's Care",
-      title: "Support When You Need It Most",
-      text:
-        "Experienced gynaecological care focused on comfort, privacy and individual healthcare needs.",
-      isActive: true,
-      order: 2,
-    },
-  ],
+  const result = {};
 
-  about: {
-    eyebrow: "About Elite Gynaecology",
-    title: "Complete Women's Healthcare",
-    highlight: "Under Expert Supervision",
+  allowedSections.forEach((section) => {
+    const incoming =
+      incomingStyles?.[section] || {};
 
-    description1:
-      "Elite Gynaecology Lahore provides professional, compassionate and personalized healthcare for women at different stages of life.",
+    const current =
+      currentStyles?.[section] || {};
 
-    description2:
-      "From routine gynaecological consultations and pregnancy care to reproductive health, hormonal management and specialized treatment, our focus is on making every patient's healthcare journey comfortable and organized.",
+    const currentHeading =
+      current.heading || {};
 
-    image: "/hero-image.png",
-  },
+    const currentText =
+      current.text || {};
 
-  doctor: {
-    name: "Prof. Dr. Ambreen Akhtar",
-    specialty: "Gynaecology & Gynae Oncology",
-    qualifications:
-      "MBBS, FCPS, MCPS, CHPE, FIMSA (India), Masters in Gynae Oncology (Spain)",
-  },
+    result[section] = {
+      heading: {
+        fontSize: clampNumber(
+          incoming?.heading?.fontSize,
+          20,
+          96,
+          Number(
+            currentHeading.fontSize
+          ) ||
+            (section === "hero"
+              ? 56
+              : 36)
+        ),
 
-  services: [
-    {
-      title: "Comprehensive Gynecology Consultation",
-      description:
-        "Complete gynecological assessment, consultation, diagnosis and personalized care.",
-      slug: "gynecology-consultation",
-      image: "/services/gyneacology-consultation.jpg",
-      isActive: true,
-      order: 0,
-    },
-    {
-      title: "Pregnancy & Antenatal Care",
-      description:
-        "Professional antenatal care and regular monitoring throughout pregnancy.",
-      slug: "pregnancy-antenatal-care",
-      image: "/services/pregnancy-antenatal-care.jpg",
-      isActive: true,
-      order: 1,
-    },
-    {
-      title: "High-Risk Pregnancy Management",
-      description:
-        "Specialized monitoring and care for pregnancies requiring additional attention.",
-      slug: "high-risk-pregnancy",
-      image: "/services/high-risk-pregnancy.jpg",
-      isActive: true,
-      order: 2,
-    },
-    {
-      title: "Infertility Evaluation & Treatment",
-      description:
-        "Comprehensive fertility evaluation and personalized reproductive healthcare.",
-      slug: "infertility-treatment",
-      image: "/services/infertility-treatment.jpg",
-      isActive: true,
-      order: 3,
-    },
-    {
-      title: "PCOS & Menstrual Disorder Management",
-      description:
-        "Personalized management of PCOS, irregular periods and menstrual concerns.",
-      slug: "pcos-menstrual-disorders",
-      image: "/services/pcos-menstrual-disorders.jpg",
-      isActive: true,
-      order: 4,
-    },
-    {
-      title: "Menopause & Hormonal Health Care",
-      description:
-        "Support and personalized care for menopause and hormonal health.",
-      slug: "menopause-hormonal-health",
-      image: "/services/menopause-hormonal-health.jpg",
-      isActive: true,
-      order: 5,
-    },
-    {
-      title: "Cervical Cancer Screening",
-      description:
-        "Pap smear and HPV screening services focused on prevention and early detection.",
-      slug: "cervical-cancer-screening",
-      image: "/services/cervical-cancer-screening.jpg",
-      isActive: true,
-      order: 6,
-    },
-    {
-      title: "Family Planning & Contraceptive Services",
-      description:
-        "Confidential counseling and personalized family planning options.",
-      slug: "family-planning",
-      image: "/services/family-planning.jpg",
-      isActive: true,
-      order: 7,
-    },
-    {
-      title: "All Types of Gynecological Surgeries",
-      description:
-        "Professional surgical care for a wide range of gynecological conditions.",
-      slug: "gynecological-surgeries",
-      image: "/services/gynecological-surgeries.jpg",
-      isActive: true,
-      order: 8,
-    },
-  ],
+        color: validColor(
+          incoming?.heading?.color,
+          currentHeading.color ||
+            (section === "hero"
+              ? "#FFFFFF"
+              : "#33151B")
+        ),
 
-  contact: {
-    phone: "+92 318 0082848",
-    email: "doctorambreenakhtar@gmail.com",
-    address:
-      "8-2, Gulberg Complex, Jail Rd, Gulberg V, Lahore, Pakistan",
-    clinicHours: "Mon - Sat",
-  },
+        alignment: validAlignment(
+          incoming?.heading?.alignment,
+          currentHeading.alignment ||
+            (section === "services"
+              ? "center"
+              : "left")
+        ),
+      },
 
-  theme: {
-    primaryColor: "#CF3650",
-    secondaryColor: "#33151B",
-    accentColor: "#F5A900",
-    textColor: "#6E1F32",
-    fontFamily: "Inter",
-    headingSize: 48,
-    bodySize: 16,
-  },
-});
+      text: {
+        fontSize: clampNumber(
+          incoming?.text?.fontSize,
+          12,
+          36,
+          Number(
+            currentText.fontSize
+          ) ||
+            (section === "hero"
+              ? 18
+              : 16)
+        ),
+
+        color: validColor(
+          incoming?.text?.color,
+          currentText.color ||
+            (section === "hero"
+              ? "#FFFFFF"
+              : "#4B5563")
+        ),
+
+        alignment: validAlignment(
+          incoming?.text?.alignment,
+          currentText.alignment ||
+            (section === "services"
+              ? "center"
+              : "left")
+        ),
+      },
+    };
+  });
+
+  return result;
+};
 
 // =====================================================
 // PUBLIC — GET WEBSITE SETTINGS
 // =====================================================
 
-router.get("/", async (_req, res) => {
-  try {
-    let settings = await WebsiteSettings.findOne({
-      key: "main",
-    });
+router.get(
+  "/",
+  async (req, res) => {
+    try {
+      const settings =
+        await WebsiteSettings.getSettings();
 
-    if (!settings) {
-      settings = await WebsiteSettings.create(
-        getDefaultSettings()
+      return res.json({
+        success: true,
+        settings,
+      });
+    } catch (error) {
+      console.error(
+        "Get website settings error:",
+        error
       );
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+          message:
+            "Unable to load website settings.",
+        });
     }
-
-    return res.json({
-      success: true,
-      settings,
-    });
-  } catch (error) {
-    console.error(
-      "Get website settings error:",
-      error.message
-    );
-
-    return res.status(500).json({
-      success: false,
-      message: "Unable to load website settings.",
-    });
   }
-});
+);
 
 // =====================================================
-// DOCTOR/ADMIN — UPDATE WEBSITE SETTINGS
+// DOCTOR — UPDATE WEBSITE SETTINGS
 // =====================================================
 
 router.patch(
@@ -244,70 +300,103 @@ router.patch(
   authorize("doctor"),
   async (req, res) => {
     try {
-      let settings = await WebsiteSettings.findOne({
-        key: "main",
-      });
-
-      if (!settings) {
-        settings = await WebsiteSettings.create(
-          getDefaultSettings()
-        );
-      }
+      const settings =
+        await WebsiteSettings.getSettings();
 
       const {
-        heroSlides,
+        hero,
         about,
         doctor,
         services,
         contact,
         theme,
+        contentStyles,
+        seo,
       } = req.body;
 
-      // ---------------- HERO ----------------
+      // =================================================
+      // HERO
+      // =================================================
 
-      if (Array.isArray(heroSlides)) {
-        settings.heroSlides = heroSlides
-          .slice(0, 10)
-          .map((slide, index) => ({
-            eyebrow: cleanText(slide.eyebrow),
-            title:
-              cleanText(slide.title) ||
-              `Hero Slide ${index + 1}`,
-            text: cleanText(slide.text),
-            image: cleanImagePath(slide.image),
-            isActive: slide.isActive !== false,
-            order: index,
-          }));
+      if (
+        hero &&
+        typeof hero === "object"
+      ) {
+        settings.hero = {
+          title:
+            cleanText(
+              hero.title ??
+                settings.hero?.title
+            ) ||
+            settings.hero?.title ||
+            "Expert Women's Healthcare You Can Trust",
+
+          subtitle:
+            cleanText(
+              hero.subtitle ??
+                settings.hero?.subtitle
+            ),
+
+          buttonText:
+            cleanText(
+              hero.buttonText ??
+                settings.hero?.buttonText
+            ) ||
+            "Book Appointment",
+
+          buttonLink:
+            cleanUrl(
+              hero.buttonLink ??
+                settings.hero?.buttonLink
+            ) ||
+            settings.hero?.buttonLink ||
+            "/book-appointment",
+
+          image:
+            cleanImagePath(
+              hero.image ??
+                settings.hero?.image
+            ) ||
+            settings.hero?.image ||
+            "/hero-image.png",
+
+          imageAlt:
+            cleanText(
+              hero.imageAlt ??
+                settings.hero?.imageAlt
+            ) ||
+            "Elite Gynaecology Clinic",
+        };
       }
 
-      // ---------------- ABOUT ----------------
+      // =================================================
+      // ABOUT
+      // =================================================
 
-      if (about && typeof about === "object") {
+      if (
+        about &&
+        typeof about === "object"
+      ) {
         settings.about = {
-          eyebrow: cleanText(
-            about.eyebrow ??
-              settings.about?.eyebrow
-          ),
+          heading:
+            cleanText(
+              about.heading ??
+                settings.about?.heading
+            ) ||
+            settings.about?.heading ||
+            "About Elite Gynaecology",
 
-          title: cleanText(
-            about.title ??
-              settings.about?.title
-          ),
+          description1:
+            cleanText(
+              about.description1 ??
+                settings.about?.description1
+            ),
 
-          highlight: cleanText(
-            about.highlight ??
-              settings.about?.highlight
-          ),
-
-          description1: cleanText(
-            about.description1 ??
-              settings.about?.description1
-          ),
-
-          description2: cleanText(
-            about.description2 ??
-              settings.about?.description2
-          ),
+          description2:
+            cleanText(
+              about.description2 ??
+                settings.about?.description2
+            ),
 
           image:
             cleanImagePath(
@@ -316,36 +405,66 @@ router.patch(
             ) ||
             settings.about?.image ||
             "/hero-image.png",
+
+          imageAlt:
+            cleanText(
+              about.imageAlt ??
+                settings.about?.imageAlt
+            ) ||
+            "Elite Gynaecology doctor",
         };
       }
 
-      // ---------------- DOCTOR ----------------
+      // =================================================
+      // DOCTOR
+      // =================================================
 
-      if (doctor && typeof doctor === "object") {
+      if (
+        doctor &&
+        typeof doctor === "object"
+      ) {
         settings.doctor = {
-          name: cleanText(
-            doctor.name ??
-              settings.doctor?.name
-          ),
+          name:
+            cleanText(
+              doctor.name ??
+                settings.doctor?.name
+            ) ||
+            settings.doctor?.name ||
+            "Dr. Elite Gynaecologist",
 
-          specialty: cleanText(
-            doctor.specialty ??
-              settings.doctor?.specialty
-          ),
+          specialty:
+            cleanText(
+              doctor.specialty ??
+                settings.doctor?.specialty
+            ),
 
-          qualifications: cleanText(
-            doctor.qualifications ??
-              settings.doctor?.qualifications
-          ),
+          qualifications:
+            cleanText(
+              doctor.qualifications ??
+                settings.doctor
+                  ?.qualifications
+            ),
         };
       }
 
-      // ---------------- SERVICES ----------------
+      // =================================================
+      // SERVICES
+      // =================================================
 
       if (Array.isArray(services)) {
         settings.services = services
           .slice(0, 30)
           .map((service, index) => {
+            /*
+             * cleanText() also normalizes old values
+             * such as:
+             *
+             * Family Planning &amp; Counselling
+             *
+             * into:
+             *
+             * Family Planning & Counselling
+             */
             const title =
               cleanText(service.title) ||
               `Service ${index + 1}`;
@@ -353,142 +472,528 @@ router.patch(
             const slug =
               cleanText(service.slug)
                 .toLowerCase()
-                .replace(/[^a-z0-9]+/g, "-")
-                .replace(/(^-|-$)/g, "") ||
+                .replace(
+                  /[^a-z0-9]+/g,
+                  "-"
+                )
+                .replace(
+                  /(^-|-$)/g,
+                  ""
+                ) ||
               `service-${index + 1}`;
 
             return {
               title,
 
-              description: cleanText(
-                service.description ??
-                  service.desc ??
-                  ""
-              ),
+              description:
+                cleanText(
+                  service.description ??
+                    service.desc ??
+                    ""
+                ),
 
               slug,
 
-              image: cleanImagePath(
-                service.image
-              ),
+              image:
+                cleanImagePath(
+                  service.image
+                ),
+
+              // -------------------------------
+              // SERVICE SEO
+              // -------------------------------
+
+              seoTitle:
+                cleanText(
+                  service.seoTitle
+                ),
+
+              metaDescription:
+                cleanText(
+                  service.metaDescription
+                ),
+
+              metaKeywords:
+                cleanStringArray(
+                  service.metaKeywords
+                ),
+
+              primaryKeyword:
+                cleanText(
+                  service.primaryKeyword
+                ),
+
+              secondaryKeywords:
+                cleanStringArray(
+                  service.secondaryKeywords
+                ),
+
+              imageAlt:
+                cleanText(
+                  service.imageAlt
+                ),
+
+              canonicalUrl:
+                cleanUrl(
+                  service.canonicalUrl
+                ),
+
+              indexPage:
+                service.indexPage !==
+                false,
+
+              // -------------------------------
+              // OPEN GRAPH
+              // -------------------------------
+
+              ogTitle:
+                cleanText(
+                  service.ogTitle
+                ),
+
+              ogDescription:
+                cleanText(
+                  service.ogDescription
+                ),
+
+              ogImage:
+                cleanImagePath(
+                  service.ogImage
+                ),
 
               isActive:
-                service.isActive !== false,
+                service.isActive !==
+                false,
 
-              order: index,
+              order:
+                Number.isFinite(
+                  Number(service.order)
+                )
+                  ? Number(
+                      service.order
+                    )
+                  : index,
             };
           });
       }
 
-      // ---------------- CONTACT ----------------
+      // =================================================
+      // CONTACT
+      // =================================================
 
       if (
         contact &&
         typeof contact === "object"
       ) {
         settings.contact = {
-          phone: cleanText(
-            contact.phone ??
-              settings.contact?.phone
-          ),
+          phone:
+            cleanText(
+              contact.phone ??
+                settings.contact?.phone
+            ),
 
-          email: cleanText(
-            contact.email ??
-              settings.contact?.email
-          ),
+          email:
+            cleanText(
+              contact.email ??
+                settings.contact?.email
+            ),
 
-          address: cleanText(
-            contact.address ??
-              settings.contact?.address
-          ),
+          address:
+            cleanText(
+              contact.address ??
+                settings.contact?.address
+            ),
 
-          clinicHours: cleanText(
-            contact.clinicHours ??
-              settings.contact?.clinicHours
-          ),
+          clinicHours:
+            cleanText(
+              contact.clinicHours ??
+                settings.contact
+                  ?.clinicHours
+            ),
         };
       }
 
-      // ---------------- THEME ----------------
+      // =================================================
+      // GLOBAL THEME
+      // =================================================
 
-      if (theme && typeof theme === "object") {
-        const headingSize = Number(
-          theme.headingSize
-        );
-
-        const bodySize = Number(
-          theme.bodySize
-        );
-
+      if (
+        theme &&
+        typeof theme === "object"
+      ) {
         settings.theme = {
-          primaryColor: validColor(
-            theme.primaryColor,
-            settings.theme?.primaryColor ||
-              "#CF3650"
-          ),
+          primaryColor:
+            validColor(
+              theme.primaryColor,
+              settings.theme
+                ?.primaryColor ||
+                "#CF3650"
+            ),
 
-          secondaryColor: validColor(
-            theme.secondaryColor,
-            settings.theme?.secondaryColor ||
-              "#33151B"
-          ),
+          secondaryColor:
+            validColor(
+              theme.secondaryColor,
+              settings.theme
+                ?.secondaryColor ||
+                "#33151B"
+            ),
 
-          accentColor: validColor(
-            theme.accentColor,
-            settings.theme?.accentColor ||
-              "#F5A900"
-          ),
+          accentColor:
+            validColor(
+              theme.accentColor,
+              settings.theme
+                ?.accentColor ||
+                "#F5A900"
+            ),
 
-          textColor: validColor(
-            theme.textColor,
-            settings.theme?.textColor ||
-              "#6E1F32"
-          ),
+          backgroundColor:
+            validColor(
+              theme.backgroundColor,
+              settings.theme
+                ?.backgroundColor ||
+                "#FFF7F8"
+            ),
+
+          textColor:
+            validColor(
+              theme.textColor,
+              settings.theme
+                ?.textColor ||
+                "#4B5563"
+            ),
 
           fontFamily:
-            cleanText(theme.fontFamily) ||
-            settings.theme?.fontFamily ||
+            cleanText(
+              theme.fontFamily ??
+                settings.theme
+                  ?.fontFamily
+            ) ||
             "Inter",
 
           headingSize:
-            Number.isFinite(headingSize)
-              ? Math.min(
-                  80,
-                  Math.max(24, headingSize)
-                )
-              : settings.theme?.headingSize ||
-                48,
+            clampNumber(
+              theme.headingSize,
+              24,
+              80,
+              Number(
+                settings.theme
+                  ?.headingSize
+              ) || 48
+            ),
 
           bodySize:
-            Number.isFinite(bodySize)
-              ? Math.min(
-                  24,
-                  Math.max(12, bodySize)
-                )
-              : settings.theme?.bodySize ||
-                16,
+            clampNumber(
+              theme.bodySize,
+              12,
+              24,
+              Number(
+                settings.theme
+                  ?.bodySize
+              ) || 16
+            ),
         };
       }
+
+      // =================================================
+      // SECTION-SPECIFIC TYPOGRAPHY
+      // =================================================
+
+      if (
+        contentStyles &&
+        typeof contentStyles ===
+          "object"
+      ) {
+        /*
+         * sanitizeContentStyles now supports:
+         *
+         * hero
+         * about
+         * doctor   <-- NEW
+         * services
+         * contact
+         */
+        settings.contentStyles =
+          sanitizeContentStyles(
+            contentStyles,
+            settings.contentStyles
+          );
+
+        settings.markModified(
+          "contentStyles"
+        );
+      }
+
+      // =================================================
+      // SEO
+      // =================================================
+
+      if (
+        seo &&
+        typeof seo === "object"
+      ) {
+        const currentSeo =
+          settings.seo || {};
+
+        const currentHome =
+          currentSeo.home || {};
+
+        const currentOpenGraph =
+          currentSeo.openGraph || {};
+
+        const currentLocalSeo =
+          currentSeo.localSeo || {};
+
+        settings.seo = {
+          // -------------------------------
+          // GLOBAL SEO
+          // -------------------------------
+
+          siteName:
+            cleanText(
+              seo.siteName ??
+                currentSeo.siteName
+            ) ||
+            "Elite Gynaecology",
+
+          defaultTitle:
+            cleanText(
+              seo.defaultTitle ??
+                currentSeo.defaultTitle
+            ) ||
+            "Elite Gynaecology | Women's Healthcare",
+
+          defaultMetaDescription:
+            cleanText(
+              seo.defaultMetaDescription ??
+                currentSeo
+                  .defaultMetaDescription
+            ),
+
+          metaKeywords:
+            seo.metaKeywords !==
+            undefined
+              ? cleanStringArray(
+                  seo.metaKeywords
+                )
+              : currentSeo
+                  .metaKeywords || [],
+
+          primaryKeyword:
+            cleanText(
+              seo.primaryKeyword ??
+                currentSeo
+                  .primaryKeyword
+            ),
+
+          secondaryKeywords:
+            seo.secondaryKeywords !==
+            undefined
+              ? cleanStringArray(
+                  seo.secondaryKeywords
+                )
+              : currentSeo
+                  .secondaryKeywords ||
+                [],
+
+          targetLocation:
+            cleanText(
+              seo.targetLocation ??
+                currentSeo
+                  .targetLocation
+            ) ||
+            "Lahore, Pakistan",
+
+          // -------------------------------
+          // HOME SEO
+          // -------------------------------
+
+          home: {
+            title:
+              cleanText(
+                seo.home?.title ??
+                  currentHome.title
+              ) ||
+              "Elite Gynaecology | Women's Healthcare in Lahore",
+
+            metaDescription:
+              cleanText(
+                seo.home
+                  ?.metaDescription ??
+                  currentHome
+                    .metaDescription
+              ),
+
+            metaKeywords:
+              seo.home
+                ?.metaKeywords !==
+              undefined
+                ? cleanStringArray(
+                    seo.home
+                      .metaKeywords
+                  )
+                : currentHome
+                    .metaKeywords ||
+                  [],
+
+            primaryKeyword:
+              cleanText(
+                seo.home
+                  ?.primaryKeyword ??
+                  currentHome
+                    .primaryKeyword
+              ),
+
+            secondaryKeywords:
+              seo.home
+                ?.secondaryKeywords !==
+              undefined
+                ? cleanStringArray(
+                    seo.home
+                      .secondaryKeywords
+                  )
+                : currentHome
+                    .secondaryKeywords ||
+                  [],
+
+            canonicalUrl:
+              cleanUrl(
+                seo.home
+                  ?.canonicalUrl ??
+                  currentHome
+                    .canonicalUrl
+              ),
+
+            indexPage:
+              seo.home
+                ?.indexPage !==
+              undefined
+                ? seo.home
+                    .indexPage !==
+                  false
+                : currentHome
+                    .indexPage !==
+                  false,
+          },
+
+          // -------------------------------
+          // OPEN GRAPH
+          // -------------------------------
+
+          openGraph: {
+            title:
+              cleanText(
+                seo.openGraph
+                  ?.title ??
+                  currentOpenGraph
+                    .title
+              ),
+
+            description:
+              cleanText(
+                seo.openGraph
+                  ?.description ??
+                  currentOpenGraph
+                    .description
+              ),
+
+            image:
+              cleanImagePath(
+                seo.openGraph
+                  ?.image ??
+                  currentOpenGraph
+                    .image
+              ),
+          },
+
+          // -------------------------------
+          // LOCAL SEO
+          // -------------------------------
+
+          localSeo: {
+            businessName:
+              cleanText(
+                seo.localSeo
+                  ?.businessName ??
+                  currentLocalSeo
+                    .businessName
+              ) ||
+              "Elite Gynaecology",
+
+            doctorName:
+              cleanText(
+                seo.localSeo
+                  ?.doctorName ??
+                  currentLocalSeo
+                    .doctorName
+              ),
+
+            city:
+              cleanText(
+                seo.localSeo
+                  ?.city ??
+                  currentLocalSeo
+                    .city
+              ) ||
+              "Lahore",
+
+            country:
+              cleanText(
+                seo.localSeo
+                  ?.country ??
+                  currentLocalSeo
+                    .country
+              ) ||
+              "Pakistan",
+
+            phone:
+              cleanText(
+                seo.localSeo
+                  ?.phone ??
+                  currentLocalSeo
+                    .phone
+              ),
+
+            address:
+              cleanText(
+                seo.localSeo
+                  ?.address ??
+                  currentLocalSeo
+                    .address
+              ),
+          },
+        };
+
+        settings.markModified("seo");
+      }
+
+      // =================================================
+      // SAVE
+      // =================================================
 
       await settings.save();
 
       return res.json({
         success: true,
+
         message:
-          "Website updated successfully.",
+          "Website settings updated successfully.",
+
         settings,
       });
     } catch (error) {
       console.error(
         "Update website settings error:",
-        error.message
+        error
       );
 
-      return res.status(500).json({
-        success: false,
-        message:
-          "Unable to update website settings.",
-      });
+      return res
+        .status(500)
+        .json({
+          success: false,
+
+          message:
+            "Unable to update website settings.",
+        });
     }
   }
 );

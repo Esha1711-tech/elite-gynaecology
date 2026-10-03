@@ -1,130 +1,214 @@
 const express = require("express");
-const sanitizeHtml = require("sanitize-html");
-
 const router = express.Router();
 
 const Blog = require("../models/Blog");
-const { auth, authorize } = require("../middleware/auth");
+const {
+  auth,
+  authorize,
+} = require("../middleware/auth");
 
 // =====================================================
-// HTML SANITIZER
-// =====================================================
-
-const sanitizeBlogContent = (content = "") => {
-  return sanitizeHtml(content, {
-    allowedTags: [
-      "p",
-      "br",
-      "strong",
-      "b",
-      "em",
-      "i",
-      "u",
-      "s",
-      "h1",
-      "h2",
-      "h3",
-      "h4",
-      "blockquote",
-      "ul",
-      "ol",
-      "li",
-      "a",
-      "code",
-      "pre",
-    ],
-
-    allowedAttributes: {
-      a: ["href", "target", "rel"],
-    },
-
-    allowedSchemes: [
-      "http",
-      "https",
-      "mailto",
-    ],
-
-    transformTags: {
-      a: (tagName, attribs) => ({
-        tagName: "a",
-        attribs: {
-          ...attribs,
-          target: "_blank",
-          rel: "noopener noreferrer",
-        },
-      }),
-    },
-  });
-};
-
-// =====================================================
-// PLAIN TEXT SANITIZER
+// HELPERS
 // =====================================================
 
 const sanitizeText = (value = "") => {
-  return sanitizeHtml(String(value), {
-    allowedTags: [],
-    allowedAttributes: {},
-  }).trim();
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value
+    .replace(/<[^>]*>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+const sanitizeBlogContent = (value = "") => {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  // Remove dangerous script/style/iframe/object/embed tags.
+  // Rich-text formatting such as headings, paragraphs,
+  // lists, bold and italic content remains available.
+
+  return value
+    .replace(
+      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+      ""
+    )
+    .replace(
+      /<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi,
+      ""
+    )
+    .replace(
+      /<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi,
+      ""
+    )
+    .replace(
+      /<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi,
+      ""
+    )
+    .replace(
+      /<embed\b[^>]*>/gi,
+      ""
+    )
+    .replace(
+      /\son\w+\s*=\s*["'][^"']*["']/gi,
+      ""
+    )
+    .replace(
+      /\son\w+\s*=\s*[^\s>]+/gi,
+      ""
+    )
+    .replace(
+      /javascript:/gi,
+      ""
+    )
+    .trim();
+};
+
+const createSlug = (title = "") => {
+  const baseSlug = sanitizeText(title)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+
+  return `${baseSlug || "blog"}-${Date.now()}`;
+};
+
+const sanitizeTags = (tags) => {
+  if (!Array.isArray(tags)) {
+    return [];
+  }
+
+  return tags
+    .map((tag) =>
+      sanitizeText(String(tag))
+    )
+    .filter(Boolean)
+    .slice(0, 30);
+};
+
+const sanitizeSeo = (seo = {}) => {
+  const allowedSchemas = [
+    "Article",
+    "BlogPosting",
+    "MedicalWebPage",
+  ];
+
+  return {
+    focusKeyword: sanitizeText(
+      seo?.focusKeyword || ""
+    ),
+
+    seoTitle: sanitizeText(
+      seo?.seoTitle || ""
+    ),
+
+    metaDescription: sanitizeText(
+      seo?.metaDescription || ""
+    ),
+
+    canonicalUrl: sanitizeText(
+      seo?.canonicalUrl || ""
+    ),
+
+    indexPage:
+      seo?.indexPage !== false,
+
+    ogTitle: sanitizeText(
+      seo?.ogTitle || ""
+    ),
+
+    ogDescription: sanitizeText(
+      seo?.ogDescription || ""
+    ),
+
+    ogImage: sanitizeText(
+      seo?.ogImage || ""
+    ),
+
+    schemaType:
+      allowedSchemas.includes(
+        seo?.schemaType
+      )
+        ? seo.schemaType
+        : "Article",
+  };
 };
 
 // =====================================================
-// PUBLIC — ALL PUBLISHED BLOGS
+// PUBLIC — GET PUBLISHED BLOGS
 // =====================================================
 
 router.get("/", async (req, res) => {
   try {
-    const { category, search } = req.query;
+    const page = Math.max(
+      Number.parseInt(
+        req.query.page,
+        10
+      ) || 1,
+      1
+    );
 
-    const query = {
+    const limit = Math.min(
+      Math.max(
+        Number.parseInt(
+          req.query.limit,
+          10
+        ) || 12,
+        1
+      ),
+      50
+    );
+
+    const skip =
+      (page - 1) * limit;
+
+    const filter = {
       isPublished: true,
     };
 
-    if (category) {
-      query.category = category;
+    if (req.query.category) {
+      filter.category =
+        sanitizeText(
+          req.query.category
+        );
     }
 
-    if (search?.trim()) {
-      const safeSearch = search
-        .trim()
-        .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const [
+      blogs,
+      total,
+    ] = await Promise.all([
+      Blog.find(filter)
+        .sort({
+          createdAt: -1,
+        })
+        .skip(skip)
+        .limit(limit)
+        .select(
+          "-__v"
+        ),
 
-      query.$or = [
-        {
-          title: {
-            $regex: safeSearch,
-            $options: "i",
-          },
-        },
-        {
-          content: {
-            $regex: safeSearch,
-            $options: "i",
-          },
-        },
-        {
-          excerpt: {
-            $regex: safeSearch,
-            $options: "i",
-          },
-        },
-      ];
-    }
-
-    const blogs = await Blog.find(query)
-      .populate(
-        "authorId",
-        "name email"
-      )
-      .sort({
-        createdAt: -1,
-      })
-      .lean();
+      Blog.countDocuments(
+        filter
+      ),
+    ]);
 
     return res.json({
       success: true,
-      count: blogs.length,
+
       blogs,
+
+      pagination: {
+        page,
+        limit,
+        total,
+        pages:
+          Math.ceil(
+            total / limit
+          ) || 1,
+      },
     });
   } catch (error) {
     console.error(
@@ -132,18 +216,19 @@ router.get("/", async (req, res) => {
       error
     );
 
-    return res.status(500).json({
-      success: false,
-      message:
-        "Unable to load blogs.",
-    });
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message:
+          "Unable to load blogs.",
+      });
   }
 });
 
+
 // =====================================================
-// DOCTOR — OWN BLOGS
-// PAGINATION
-// MUST REMAIN BEFORE /:slug
+// DOCTOR — GET OWN BLOGS
 // =====================================================
 
 router.get(
@@ -167,109 +252,133 @@ router.get(
 
       const skip = (page - 1) * limit;
 
-      const query = {
+      const filter = {
         authorId: req.user.id,
       };
 
-      const [blogs, totalBlogs] =
-        await Promise.all([
-          Blog.find(query)
-            .populate(
-              "authorId",
-              "name email"
-            )
-            .sort({
-              createdAt: -1,
-            })
-            .skip(skip)
-            .limit(limit)
-            .lean(),
+      const [blogs, totalBlogs] = await Promise.all([
+        Blog.find(filter)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .select("-__v"),
 
-          Blog.countDocuments(query),
-        ]);
+        Blog.countDocuments(filter),
+      ]);
 
-      const totalPages = Math.max(
-        Math.ceil(totalBlogs / limit),
-        1
-      );
+      const totalPages =
+        Math.ceil(totalBlogs / limit) || 1;
 
       return res.json({
         success: true,
-        count: blogs.length,
+
         blogs,
 
         pagination: {
           currentPage: page,
           totalPages,
           totalBlogs,
-          limit,
-
-          hasNextPage:
-            page < totalPages,
-
-          hasPreviousPage:
-            page > 1,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1,
         },
       });
     } catch (error) {
       console.error(
-        "Get my blogs error:",
+        "Get doctor blogs error:",
         error
       );
 
       return res.status(500).json({
         success: false,
-        message:
-          "Unable to load your blogs.",
+        message: "Unable to load your blogs.",
       });
     }
   }
 );
 
 // =====================================================
-// PUBLIC — SINGLE PUBLISHED BLOG
+// PUBLIC — GET SINGLE PUBLISHED BLOG
 // =====================================================
 
-router.get("/:slug", async (req, res) => {
-  try {
-    const blog = await Blog.findOne({
-      slug: req.params.slug,
-      isPublished: true,
-    }).populate(
-      "authorId",
-      "name email"
-    );
+router.get(
+  "/:slug",
+  async (req, res) => {
+    try {
+      const slug =
+        String(
+          req.params.slug || ""
+        ).trim();
 
-    if (!blog) {
-      return res.status(404).json({
-        success: false,
-        message:
-          "Blog not found.",
+      if (!slug) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              "Blog slug is required.",
+          });
+      }
+
+      const blog =
+        await Blog.findOne({
+          slug,
+          isPublished: true,
+        }).select("-__v");
+
+      if (!blog) {
+        return res
+          .status(404)
+          .json({
+            success: false,
+            message:
+              "Blog not found.",
+          });
+      }
+
+      // Increase view count without
+      // blocking the response.
+
+      Blog.updateOne(
+        {
+          _id: blog._id,
+        },
+        {
+          $inc: {
+            views: 1,
+          },
+        }
+      ).catch((error) => {
+        console.error(
+          "Blog view update error:",
+          error
+        );
       });
+
+      blog.views =
+        Number(
+          blog.views || 0
+        ) + 1;
+
+      return res.json({
+        success: true,
+        blog,
+      });
+    } catch (error) {
+      console.error(
+        "Get blog error:",
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+          message:
+            "Unable to load blog.",
+        });
     }
-
-    blog.views =
-      (blog.views || 0) + 1;
-
-    await blog.save();
-
-    return res.json({
-      success: true,
-      blog,
-    });
-  } catch (error) {
-    console.error(
-      "Get blog detail error:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      message:
-        "Unable to load blog.",
-    });
   }
-});
+);
 
 // =====================================================
 // DOCTOR — CREATE BLOG
@@ -289,31 +398,34 @@ router.post(
         category,
         tags,
         isPublished,
+        seo,
       } = req.body;
 
       if (
         !title?.trim() ||
         !content?.trim()
       ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Title and content are required.",
-        });
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              "Title and content are required.",
+          });
       }
-
-      // ---------------------------------------------
-      // SANITIZE USER CONTENT
-      // ---------------------------------------------
 
       const cleanTitle =
         sanitizeText(title);
 
       const cleanContent =
-        sanitizeBlogContent(content);
+        sanitizeBlogContent(
+          content
+        );
 
       const cleanExcerpt =
-        sanitizeText(excerpt || "");
+        sanitizeText(
+          excerpt || ""
+        );
 
       const cleanCategory =
         sanitizeText(
@@ -322,63 +434,70 @@ router.post(
         );
 
       const cleanTags =
-        Array.isArray(tags)
-          ? tags
-              .map((tag) =>
-                sanitizeText(tag)
-              )
-              .filter(Boolean)
-          : [];
+        sanitizeTags(tags);
 
-      if (!cleanContent.trim()) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Blog content is empty after validation.",
-        });
+      const cleanSeo =
+        sanitizeSeo(seo);
+
+      if (!cleanTitle) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              "Valid blog title is required.",
+          });
       }
 
-      // ---------------------------------------------
-      // SLUG
-      // ---------------------------------------------
+      if (
+        !cleanContent.trim()
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              "Blog content is empty after validation.",
+          });
+      }
 
       const slug =
-        `${cleanTitle
-          .toLowerCase()
-          .replace(
-            /[^a-z0-9]+/g,
-            "-"
-          )
-          .replace(
-            /(^-|-$)/g,
-            ""
-          )}-${Date.now()}`;
-
-      // ---------------------------------------------
-      // CREATE
-      // ---------------------------------------------
+        createSlug(
+          cleanTitle
+        );
 
       const blog =
         await Blog.create({
-          title: cleanTitle,
+          title:
+            cleanTitle,
 
           slug,
 
-          content: cleanContent,
+          content:
+            cleanContent,
 
-          excerpt: cleanExcerpt,
+          excerpt:
+            cleanExcerpt,
 
           featuredImage:
-            featuredImage?.trim() || "",
+            typeof featuredImage ===
+            "string"
+              ? featuredImage.trim()
+              : "",
 
           category:
             cleanCategory ||
             "Women's Health",
 
-          tags: cleanTags,
+          tags:
+            cleanTags,
 
           isPublished:
-            isPublished !== false,
+            isPublished !==
+            false,
+
+          seo:
+            cleanSeo,
 
           authorId:
             req.user.id,
@@ -388,23 +507,42 @@ router.post(
             "Dr. Elite Gynaecologist",
         });
 
-      return res.status(201).json({
-        success: true,
-        message:
-          "Blog created successfully.",
-        blog,
-      });
+      return res
+        .status(201)
+        .json({
+          success: true,
+
+          message:
+            "Blog created successfully.",
+
+          blog,
+        });
     } catch (error) {
       console.error(
         "Create blog error:",
         error
       );
 
-      return res.status(500).json({
-        success: false,
-        message:
-          "Unable to create blog.",
-      });
+      if (
+        error?.code ===
+        11000
+      ) {
+        return res
+          .status(409)
+          .json({
+            success: false,
+            message:
+              "A blog with this slug already exists.",
+          });
+      }
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+          message:
+            "Unable to create blog.",
+        });
     }
   }
 );
@@ -425,20 +563,50 @@ router.patch(
         req.body.title !==
         undefined
       ) {
-        update.title =
+        const cleanTitle =
           sanitizeText(
             req.body.title
           );
+
+        if (!cleanTitle) {
+          return res
+            .status(400)
+            .json({
+              success:
+                false,
+              message:
+                "Valid blog title is required.",
+            });
+        }
+
+        update.title =
+          cleanTitle;
       }
 
       if (
         req.body.content !==
         undefined
       ) {
-        update.content =
+        const cleanContent =
           sanitizeBlogContent(
             req.body.content
           );
+
+        if (
+          !cleanContent.trim()
+        ) {
+          return res
+            .status(400)
+            .json({
+              success:
+                false,
+              message:
+                "Blog content cannot be empty.",
+            });
+        }
+
+        update.content =
+          cleanContent;
       }
 
       if (
@@ -466,9 +634,11 @@ router.patch(
         undefined
       ) {
         update.featuredImage =
-          String(
-            req.body.featuredImage
-          ).trim();
+          typeof req.body
+            .featuredImage ===
+          "string"
+            ? req.body.featuredImage.trim()
+            : "";
       }
 
       if (
@@ -476,15 +646,9 @@ router.patch(
         undefined
       ) {
         update.tags =
-          Array.isArray(
+          sanitizeTags(
             req.body.tags
-          )
-            ? req.body.tags
-                .map((tag) =>
-                  sanitizeText(tag)
-                )
-                .filter(Boolean)
-            : [];
+          );
       }
 
       if (
@@ -493,20 +657,37 @@ router.patch(
       ) {
         update.isPublished =
           Boolean(
-            req.body.isPublished
+            req.body
+              .isPublished
+          );
+      }
+
+      if (
+        req.body.seo !==
+        undefined
+      ) {
+        update.seo =
+          sanitizeSeo(
+            req.body.seo
           );
       }
 
       const blog =
         await Blog.findOneAndUpdate(
           {
-            _id: req.params.id,
-            authorId: req.user.id,
+            _id:
+              req.params.id,
+
+            authorId:
+              req.user.id,
           },
+
           update,
+
           {
             new: true,
-            runValidators: true,
+            runValidators:
+              true,
           }
         ).populate(
           "authorId",
@@ -514,17 +695,21 @@ router.patch(
         );
 
       if (!blog) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Blog not found or unauthorized.",
-        });
+        return res
+          .status(404)
+          .json({
+            success: false,
+            message:
+              "Blog not found or unauthorized.",
+          });
       }
 
       return res.json({
         success: true,
+
         message:
           "Blog updated successfully.",
+
         blog,
       });
     } catch (error) {
@@ -533,11 +718,13 @@ router.patch(
         error
       );
 
-      return res.status(500).json({
-        success: false,
-        message:
-          "Unable to update blog.",
-      });
+      return res
+        .status(500)
+        .json({
+          success: false,
+          message:
+            "Unable to update blog.",
+        });
     }
   }
 );
@@ -553,21 +740,29 @@ router.delete(
   async (req, res) => {
     try {
       const blog =
-        await Blog.findOneAndDelete({
-          _id: req.params.id,
-          authorId: req.user.id,
-        });
+        await Blog.findOneAndDelete(
+          {
+            _id:
+              req.params.id,
+
+            authorId:
+              req.user.id,
+          }
+        );
 
       if (!blog) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Blog not found or unauthorized.",
-        });
+        return res
+          .status(404)
+          .json({
+            success: false,
+            message:
+              "Blog not found or unauthorized.",
+          });
       }
 
       return res.json({
         success: true,
+
         message:
           "Blog deleted successfully.",
       });
@@ -577,11 +772,13 @@ router.delete(
         error
       );
 
-      return res.status(500).json({
-        success: false,
-        message:
-          "Unable to delete blog.",
-      });
+      return res
+        .status(500)
+        .json({
+          success: false,
+          message:
+            "Unable to delete blog.",
+        });
     }
   }
 );

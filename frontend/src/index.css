@@ -222,3 +222,7 @@ input[type="radio"] {
 .appointment-btn:active {
   transform: translateY(0) scale(0.98);
 }
+
+nav::-webkit-scrollbar {
+  display: none;
+}

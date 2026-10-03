@@ -39,10 +39,10 @@ const Footer = () => {
           </p>
           <div className="mt-5 flex gap-3">
             {[
-              [Facebook, "https://facebook.com", "Facebook"],
-              [Instagram, "https://instagram.com", "Instagram"],
-              [Youtube, "https://youtube.com", "YouTube"],
-              [Linkedin, "https://linkedin.com", "LinkedIn"],
+              [Facebook, "https://www.facebook.com/dr.ambreenakhtargynaecologist/", "Facebook"],
+              [Instagram, "https://www.instagram.com/imdrambreenakhtar/", "Instagram"],
+              [Youtube, "https://www.youtube.com/@drambreenakhtar", "YouTube"],
+              [Linkedin, "https://www.linkedin.com/in/prof-dr-ambreen-akhtar-26267610b/", "LinkedIn"],
             ].map(([Icon, href, label]) => (
               <a
                 key={label}

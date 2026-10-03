@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import api from "../utils/api";
 import {
   ArrowLeft,
   ArrowRight,
@@ -293,7 +295,205 @@ const services = {
 
 const ServiceDetail = () => {
   const { slug } = useParams();
-  const service = services[slug];
+  const [cmsService, setCmsService] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const detailedService = services[slug];
+
+  useEffect(() => {
+    let active = true;
+
+    const loadSettings = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get("/website-settings");
+        const settings = res.data?.settings || res.data || {};
+        const match = Array.isArray(settings.services)
+          ? settings.services.find(
+              (item) => item?.slug === slug && item?.isActive !== false
+            )
+          : null;
+
+        if (active) setCmsService(match || null);
+      } catch (error) {
+        console.error("Unable to load service SEO settings:", error);
+        if (active) setCmsService(null);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    if (slug) loadSettings();
+
+    return () => {
+      active = false;
+    };
+  }, [slug]);
+
+  const service = detailedService
+    ? {
+        ...detailedService,
+        ...(cmsService || {}),
+        title: cmsService?.title || detailedService.title,
+        image: cmsService?.image || detailedService.image,
+        overview: detailedService.overview,
+        subtitle: detailedService.subtitle,
+        includes: detailedService.includes,
+        faqs: detailedService.faqs,
+      }
+    : cmsService
+      ? {
+          ...cmsService,
+          subtitle: cmsService.description || "",
+          overview: cmsService.description || "",
+          includes: [],
+          faqs: [],
+        }
+      : null;
+
+  useEffect(() => {
+    if (!service) return;
+
+    const siteUrl = window.location.origin;
+    const pageUrl =
+      service.canonicalUrl || `${siteUrl}/services/${encodeURIComponent(slug)}`;
+    const title =
+      service.seoTitle || `${service.title} | Elite Gynaecology`;
+    const description =
+      service.metaDescription ||
+      service.description ||
+      service.overview ||
+      "";
+    const ogTitle = service.ogTitle || title;
+    const ogDescription = service.ogDescription || description;
+    const ogImage = service.ogImage || service.image || "";
+    const imageUrl = ogImage
+      ? ogImage.startsWith("http")
+        ? ogImage
+        : `${siteUrl}${ogImage.startsWith("/") ? ogImage : `/${ogImage}`}`
+      : "";
+
+    const upsertMeta = (selector, attributes) => {
+      let element = document.head.querySelector(selector);
+      if (!element) {
+        element = document.createElement("meta");
+        document.head.appendChild(element);
+      }
+      Object.entries(attributes).forEach(([key, value]) =>
+        element.setAttribute(key, value)
+      );
+      return element;
+    };
+
+    document.title = title;
+
+    upsertMeta('meta[name="description"]', {
+      name: "description",
+      content: description,
+    });
+
+    if (Array.isArray(service.metaKeywords) && service.metaKeywords.length) {
+      upsertMeta('meta[name="keywords"]', {
+        name: "keywords",
+        content: service.metaKeywords.join(", "),
+      });
+    }
+
+    upsertMeta('meta[name="robots"]', {
+      name: "robots",
+      content: service.indexPage === false ? "noindex, nofollow" : "index, follow",
+    });
+
+    upsertMeta('meta[property="og:title"]', {
+      property: "og:title",
+      content: ogTitle,
+    });
+    upsertMeta('meta[property="og:description"]', {
+      property: "og:description",
+      content: ogDescription,
+    });
+    upsertMeta('meta[property="og:type"]', {
+      property: "og:type",
+      content: "website",
+    });
+    upsertMeta('meta[property="og:url"]', {
+      property: "og:url",
+      content: pageUrl,
+    });
+
+    if (imageUrl) {
+      upsertMeta('meta[property="og:image"]', {
+        property: "og:image",
+        content: imageUrl,
+      });
+    }
+
+    upsertMeta('meta[name="twitter:card"]', {
+      name: "twitter:card",
+      content: imageUrl ? "summary_large_image" : "summary",
+    });
+    upsertMeta('meta[name="twitter:title"]', {
+      name: "twitter:title",
+      content: ogTitle,
+    });
+    upsertMeta('meta[name="twitter:description"]', {
+      name: "twitter:description",
+      content: ogDescription,
+    });
+
+    if (imageUrl) {
+      upsertMeta('meta[name="twitter:image"]', {
+        name: "twitter:image",
+        content: imageUrl,
+      });
+    }
+
+    let canonical = document.head.querySelector('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement("link");
+      canonical.setAttribute("rel", "canonical");
+      document.head.appendChild(canonical);
+    }
+    canonical.setAttribute("href", pageUrl);
+
+    let schema = document.head.querySelector(
+      'script[data-service-schema="elite-gynaecology"]'
+    );
+    if (!schema) {
+      schema = document.createElement("script");
+      schema.type = "application/ld+json";
+      schema.dataset.serviceSchema = "elite-gynaecology";
+      document.head.appendChild(schema);
+    }
+
+    schema.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "MedicalProcedure",
+      name: service.title,
+      description,
+      url: pageUrl,
+      ...(imageUrl ? { image: imageUrl } : {}),
+      provider: {
+        "@type": "MedicalClinic",
+        name: "Elite Gynaecology",
+      },
+    });
+
+    return () => {
+      const currentSchema = document.head.querySelector(
+        'script[data-service-schema="elite-gynaecology"]'
+      );
+      currentSchema?.remove();
+    };
+  }, [service, slug]);
+
+  if (loading && !detailedService) {
+    return (
+      <main className="min-h-[70vh] bg-[#FFF7F8] flex items-center justify-center px-4">
+        <p className="text-[#6E1F32] font-semibold">Loading service...</p>
+      </main>
+    );
+  }
 
   if (!service) {
     return (
@@ -321,7 +521,7 @@ const ServiceDetail = () => {
       <section className="relative min-h-[420px] overflow-hidden">
         <img
           src={service.image}
-          alt={service.title}
+          alt={service.imageAlt || service.title}
           className="absolute inset-0 h-full w-full object-cover object-center"
         />
 

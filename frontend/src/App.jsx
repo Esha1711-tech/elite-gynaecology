@@ -19,13 +19,18 @@ import HealthRecords from "./pages/HealthRecords";
 import ServiceDetail from "./pages/ServiceDetail";
 import NotFound from "./pages/NotFound";
 
-
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   const location = useLocation();
 
+  // Doctor/Admin panel has its own navigation.
+  const isAdminRoute =
+    location.pathname === "/admin" ||
+    location.pathname.startsWith("/admin/");
+
   const hideFooter =
+    isAdminRoute ||
     location.pathname === "/login" ||
     location.pathname === "/register" ||
     location.pathname === "/forgot-password" ||
@@ -35,31 +40,49 @@ function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-primary-light">
-      {/* Scroll page to top whenever route changes */}
       <ScrollToTop />
 
-      <Navbar />
+      {/* Public navbar is hidden inside doctor/admin panel */}
+      {!isAdminRoute && <Navbar />}
 
       <main className="flex-grow">
         <Routes>
           <Route path="/" element={<Home />} />
 
           <Route
-  path="/services/:slug"
-  element={<ServiceDetail />}
-/>
+            path="/services/:slug"
+            element={<ServiceDetail />}
+          />
 
-          <Route path="/login" element={<Login />} />
+          <Route
+            path="/login"
+            element={<Login />}
+          />
 
-          <Route path="/register" element={<Register />} />
+          <Route
+            path="/register"
+            element={<Register />}
+          />
 
-          <Route path="/forgot-password" element={<ForgotPassword />}/>
+          <Route
+            path="/forgot-password"
+            element={<ForgotPassword />}
+          />
 
-          <Route path="/reset-password/:token" element={<ResetPassword />}/>
+          <Route
+            path="/reset-password/:token"
+            element={<ResetPassword />}
+          />
 
-          <Route path="/blog" element={<Blog />} />
+          <Route
+            path="/blog"
+            element={<Blog />}
+          />
 
-          <Route path="/blog/:slug" element={<BlogDetail />} />
+          <Route
+            path="/blog/:slug"
+            element={<BlogDetail />}
+          />
 
           <Route
             path="/appointments"
@@ -82,7 +105,9 @@ function App() {
           <Route
             path="/health-records"
             element={
-              <ProtectedRoute allowedRoles={["patient", "doctor"]}>
+              <ProtectedRoute
+                allowedRoles={["patient", "doctor"]}
+              >
                 <HealthRecords />
               </ProtectedRoute>
             }
@@ -97,7 +122,10 @@ function App() {
             }
           />
 
-          <Route path="*" element={<NotFound />} />
+          <Route
+            path="*"
+            element={<NotFound />}
+          />
         </Routes>
       </main>
 
