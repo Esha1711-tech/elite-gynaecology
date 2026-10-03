@@ -271,93 +271,283 @@ const Home = () => {
       {/* =====================================================
           HERO / AUTO SLIDER
       ====================================================== */}
-      <section id="home" className="relative overflow-hidden bg-[#33151B]">
-        <div className="relative min-h-[560px] md:min-h-[620px] lg:min-h-[660px]">
-          {heroSlides.map((slide, index) => (
-            <div
-              key={slide.title}
-              className={`absolute inset-0 transition-opacity duration-1000 ${
-                index === currentSlide ? "opacity-100" : "opacity-0 pointer-events-none"
-              }`}
-            >
-              <img
-                src={slide.image}
-                alt={slide.title}
-                className="h-full w-full object-contain object-center md:object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/15" />
-            </div>
-          ))}
+      {/* =====================================================
+    HERO / AUTO SLIDER
+====================================================== */}
+<section id="home" className="relative overflow-hidden bg-black">
+  <div className="relative h-[540px] sm:h-[580px] md:min-h-[620px] lg:min-h-[660px]">
 
-          <div className="relative z-10 mx-auto flex min-h-[560px] max-w-7xl items-center px-5 sm:px-6 md:min-h-[620px] lg:min-h-[660px] lg:px-8">
-            <div className="max-w-3xl pt-8 text-white">
-              <p className="text-lg font-bold text-[#F5B1BC] md:text-xl">
-                {heroSlides[currentSlide]?.eyebrow || "Prenatal Excellence"}
-              </p>
+    {/* SLIDER IMAGES */}
+    {heroSlides.map((slide, index) => (
+      <div
+        key={slide.title}
+        className={`absolute inset-0 transition-opacity duration-1000 ${
+          index === currentSlide
+            ? "opacity-100"
+            : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <img
+          src={slide.image}
+          alt={slide.title}
+          className="
+            absolute inset-0
+            h-full w-full
+            object-contain object-center
+            md:object-cover
+          "
+        />
 
-              <h1 className="mt-4 max-w-3xl text-4xl font-extrabold leading-[1.03] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl" style={sectionStyle("hero", "heading", { color: "#FFFFFF", textAlign: "left" })}>
-                {heroSlides[currentSlide]?.title}
-              </h1>
+        {/* BLACK OVERLAY */}
+        <div
+          className="
+            absolute inset-0
+            bg-gradient-to-r
+            from-black/75
+            via-black/50
+            to-black/25
+            md:from-black/80
+            md:via-black/50
+            md:to-black/15
+          "
+        />
+      </div>
+    ))}
 
-              <p className="mt-5 max-w-2xl text-lg leading-8 text-white/90 md:text-2xl" style={sectionStyle("hero", "text", { color: "#FFFFFF", textAlign: "left" })}>
-                {heroSlides[currentSlide]?.text}
-              </p>
+    {/* HERO CONTENT */}
+    <div
+      className="
+        absolute inset-0 z-10
+        mx-auto flex h-full w-full max-w-7xl
+        items-center
+        px-4
+        sm:px-6
+        lg:px-8
+      "
+    >
+      <div className="w-full max-w-[88%] sm:max-w-xl md:max-w-3xl">
 
-              <div className="mt-6 flex flex-wrap gap-3">
-                <a
-                  href="https://wa.me/923180082848"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-4 font-bold text-[#CF3650] shadow-lg transition hover:-translate-y-0.5"
-                >
-                  <Phone className="h-5 w-5" />
-                  Call Us
-                </a>
+        {/* EYEBROW */}
+        <p
+          className="
+            mb-2
+            text-[11px]
+            font-bold
+            uppercase
+            tracking-[0.12em]
+            text-[#F5B1BC]
+            sm:text-sm
+            md:text-xl
+          "
+        >
+          {heroSlides[currentSlide]?.eyebrow || "Prenatal Excellence"}
+        </p>
 
-                <Link
-                  to={primaryAction.to}
-                  className="appointment-btn"
-                >
-                  <Calendar className="h-5 w-5" />
-                  {user?.role === "doctor" ? "Go to Dashboard" : "Book Your Appointment"}
-                </Link>
-              </div>
-            </div>
-          </div>
+        {/* HEADING */}
+        <h1
+          className="
+            !text-[27px]
+            !leading-[1.08]
+            font-extrabold
+            tracking-tight
+            text-white
+            sm:!text-[36px]
+            md:!text-[52px]
+            lg:!text-[64px]
+          "
+          style={{
+            color:
+              websiteSettings?.contentStyles?.hero?.heading?.color ||
+              "#FFFFFF",
+            textAlign: "left",
+          }}
+        >
+          {heroSlides[currentSlide]?.title}
+        </h1>
 
-          <button
-            type="button"
-            onClick={previousSlide}
-            aria-label="Previous banner"
-            className="absolute left-4 top-1/2 z-20 hidden h-14 w-14 -translate-y-1/2 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition hover:bg-white/30 md:flex"
+        {/* DESCRIPTION */}
+        <p
+          className="
+            mt-3
+            max-w-[95%]
+            !text-[13px]
+            !leading-[1.45]
+            text-white/90
+            sm:!text-[15px]
+            md:mt-5
+            md:max-w-2xl
+            md:!text-[20px]
+            md:!leading-8
+          "
+          style={{
+            color:
+              websiteSettings?.contentStyles?.hero?.text?.color ||
+              "#FFFFFF",
+            textAlign: "left",
+          }}
+        >
+          {heroSlides[currentSlide]?.text}
+        </p>
+
+        {/* BUTTONS */}
+        <div
+          className="
+            mt-4
+            flex
+            w-full
+            flex-col
+            gap-2.5
+            min-[380px]:flex-row
+            min-[380px]:items-center
+            md:mt-6
+            md:gap-3
+          "
+        >
+          <a
+            href="https://wa.me/923180082848"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="
+              inline-flex
+              h-11
+              w-full
+              items-center
+              justify-center
+              gap-2
+              rounded-full
+              bg-white
+              px-4
+              text-[13px]
+              font-bold
+              text-[#CF3650]
+              shadow-lg
+              transition
+              hover:-translate-y-0.5
+              min-[380px]:w-auto
+              sm:px-6
+              md:h-auto
+              md:px-7
+              md:py-4
+              md:text-base
+            "
           >
-            <ChevronLeft className="h-8 w-8" />
-          </button>
+            <Phone className="h-4 w-4 md:h-5 md:w-5" />
+            Call Us
+          </a>
 
-          <button
-            type="button"
-            onClick={nextSlide}
-            aria-label="Next banner"
-            className="absolute right-4 top-1/2 z-20 hidden h-14 w-14 -translate-y-1/2 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition hover:bg-white/30 md:flex"
+          <Link
+            to={primaryAction.to}
+            className="
+              inline-flex
+              h-11
+              w-full
+              items-center
+              justify-center
+              gap-2
+              rounded-full
+              bg-[#CF3650]
+              px-4
+              text-center
+              text-[13px]
+              font-bold
+              text-white
+              shadow-lg
+              transition
+              hover:bg-[#B92E45]
+              min-[380px]:w-auto
+              sm:px-6
+              md:h-auto
+              md:px-7
+              md:py-4
+              md:text-base
+            "
           >
-            <ChevronRight className="h-8 w-8" />
-          </button>
+            <Calendar className="h-4 w-4 shrink-0 md:h-5 md:w-5" />
 
-          <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 gap-2">
-            {heroSlides.map((slide, index) => (
-              <button
-                key={slide.title}
-                type="button"
-                onClick={() => goToSlide(index)}
-                aria-label={`Go to slide ${index + 1}`}
-                className={`h-3 rounded-full transition-all ${
-                  currentSlide === index ? "w-9 bg-[#CF3650]" : "w-3 bg-white/75"
-                }`}
-              />
-            ))}
-          </div>
+            <span>
+              {user?.role === "doctor"
+                ? "Go to Dashboard"
+                : "Book Your Appointment"}
+            </span>
+          </Link>
         </div>
-      </section>
+      </div>
+    </div>
+
+    {/* PREVIOUS BUTTON */}
+    <button
+      type="button"
+      onClick={previousSlide}
+      aria-label="Previous banner"
+      className="
+        absolute left-2 top-1/2 z-20
+        hidden h-9 w-9
+        -translate-y-1/2
+        items-center justify-center
+        rounded-full
+        bg-black/30
+        text-white
+        backdrop-blur-sm
+        transition
+        hover:bg-black/50
+        md:flex
+        md:left-4
+        md:h-14
+        md:w-14
+      "
+    >
+      <ChevronLeft className="h-5 w-5 md:h-8 md:w-8" />
+    </button>
+
+    {/* NEXT BUTTON */}
+    <button
+      type="button"
+      onClick={nextSlide}
+      aria-label="Next banner"
+      className="
+        absolute right-2 top-1/2 z-20
+        hidden h-9 w-9
+        -translate-y-1/2
+        items-center justify-center
+        rounded-full
+        bg-black/30
+        text-white
+        backdrop-blur-sm
+        transition
+        hover:bg-black/50
+        md:flex
+        md:right-4
+        md:h-14
+        md:w-14
+      "
+    >
+      <ChevronRight className="h-5 w-5 md:h-8 md:w-8" />
+    </button>
+
+    {/* SLIDER DOTS */}
+    <div
+      className="
+        absolute bottom-3 left-1/2 z-20
+        flex -translate-x-1/2 gap-2
+        md:bottom-6
+      "
+    >
+      {heroSlides.map((slide, index) => (
+        <button
+          key={slide.title}
+          type="button"
+          onClick={() => goToSlide(index)}
+          aria-label={`Go to slide ${index + 1}`}
+          className={`h-2 rounded-full transition-all md:h-3 ${
+            currentSlide === index
+              ? "w-7 bg-[#CF3650] md:w-9"
+              : "w-2 bg-white/75 md:w-3"
+          }`}
+        />
+      ))}
+    </div>
+  </div>
+</section>
 
       {/* =====================================================
           QUICK INFORMATION STRIP
@@ -393,7 +583,7 @@ const Home = () => {
             ].map(({ icon: Icon, title, text }, index) => (
               <div
                 key={title}
-                className={`flex items-center gap-4 px-7 py-7 ${
+                className={`flex items-center gap-3 px-4 py-4 sm:gap-4 sm:px-7 sm:py-7 ${
                   index !== 3
                     ? "lg:border-r border-white/15"
                     : ""
@@ -425,7 +615,7 @@ const Home = () => {
 
       <section
         id="about"
-        className="scroll-mt-24 py-6 lg:py-7 bg-white"
+        className="scroll-mt-24 py-8 sm:py-10 lg:py-7 bg-white"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
@@ -435,7 +625,7 @@ const Home = () => {
 
             <div className="relative">
 
-              <div className="bg-[#FCEBED] p-4 sm:p-7">
+              <div className="bg-[#FCEBED] p-2 sm:p-7">
 
                 <img
                   src={about.image || "/hero-image.png"}
@@ -445,11 +635,11 @@ const Home = () => {
 
               </div>
 
-              <div className="absolute -bottom-7 right-0 sm:-right-7 bg-[#E85B73] text-white p-7 shadow-lg">
+              <div className="relative ml-auto -mt-3 w-fit bg-[#E85B73] px-4 py-3 text-white shadow-lg sm:absolute sm:-bottom-7 sm:-right-7 sm:mt-0 sm:p-7">
 
                 <Heart className="w-8 h-8" />
 
-                <p className="mt-3 text-xl font-bold">
+                <p className="mt-2 text-base font-bold sm:mt-3 sm:text-xl">
                   Compassionate
                 </p>
 
@@ -469,7 +659,7 @@ const Home = () => {
                 {about.eyebrow || "About Elite Gynaecology"}
               </p>
 
-              <h2 className="mt-4 text-3xl md:text-4xl lg:text-5xl font-bold leading-tight text-[#6E1F32]" style={sectionStyle("about", "heading", { color: "#6E1F32", textAlign: "left" })}>
+              <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight text-[#6E1F32]" style={sectionStyle("about", "heading", { color: "#6E1F32", textAlign: "left" })}>
                 {about.title || "Complete Women's Healthcare"}
                 <span className="block text-[#E85B73]">
                   {about.highlight || "Under Expert Supervision"}
@@ -529,7 +719,7 @@ const Home = () => {
 
       <section
   id="services"
-  className="scroll-mt-24 bg-[#FFF7F8] py-10 lg:py-14"
+  className="scroll-mt-24 bg-[#FFF7F8] py-8 sm:py-10 lg:py-14"
 >
   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
@@ -539,7 +729,7 @@ const Home = () => {
         Our Services
       </p>
 
-      <h2 className="mt-3 text-3xl md:text-4xl lg:text-5xl font-bold text-[#6E1F32]" style={sectionStyle("services", "heading", { color: "#6E1F32", textAlign: "center" })}>
+      <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#6E1F32]" style={sectionStyle("services", "heading", { color: "#6E1F32", textAlign: "center" })}>
         Complete Women's Healthcare Services
       </h2>
 
@@ -557,16 +747,16 @@ const Home = () => {
     className="group overflow-hidden rounded-2xl border border-[#F0D8DD] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#CF3650]/40 hover:shadow-xl"
   >
     {/* IMAGE */}
-    <div className="h-48 overflow-hidden">
+    <div className="h-40 overflow-hidden bg-white sm:h-48">
       <img
         src={image}
         alt={imageAlt || title}
-        className="h-full w-full object-contain md:object-cover transition-transform duration-500 group-hover:scale-105"
+        className="h-full w-full object-contain p-1 transition-transform duration-500 group-hover:scale-[1.02] sm:p-2"
       />
     </div>
 
     {/* CONTENT */}
-    <div className="p-5 text-center">
+    <div className="p-4 text-center sm:p-5">
       <h3 className="text-lg font-bold text-[#6E1F32] transition group-hover:text-[#CF3650]">
         {title}
       </h3>
@@ -608,7 +798,7 @@ const Home = () => {
               Meet Our Specialist
             </p>
 
-            <h2 className="mt-4 text-3xl md:text-4xl lg:text-5xl font-bold text-[#6E1F32]" style={sectionStyle("doctor", "heading", { color: "#6E1F32", textAlign: "center" })}>
+            <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#6E1F32]" style={sectionStyle("doctor", "heading", { color: "#6E1F32", textAlign: "center" })}>
               Experienced Care You Can Trust
             </h2>
 
@@ -623,20 +813,20 @@ const Home = () => {
               <img
                 src="/dr image.jpeg"
                 alt={doctor.name || "Prof. Dr. Ambreen Akhtar"}
-                className="relative w-full h-auto object-contain object-top lg:absolute lg:inset-0 lg:h-full lg:object-cover"
+                className="relative w-full max-h-[430px] h-auto object-contain object-top lg:absolute lg:inset-0 lg:max-h-none lg:h-full lg:object-cover"
               />
 
             </div>
 
             {/* DETAILS */}
 
-            <div className="p-8 md:p-12 lg:p-14 flex flex-col justify-center">
+            <div className="p-5 sm:p-8 md:p-12 lg:p-14 flex flex-col justify-center">
 
               <p className="text-sm uppercase tracking-[0.16em] font-bold text-[#E85B73]">
                 Consultant Gynaecologist
               </p>
 
-              <h3 className="mt-3 text-3xl md:text-4xl font-bold text-[#6E1F32]">
+              <h3 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-bold text-[#6E1F32]">
                 {doctor.name || "Prof. Dr. Ambreen Akhtar"}
               </h3>
 
@@ -919,7 +1109,7 @@ const Home = () => {
               Frequently Asked Questions
             </p>
 
-            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-[#6E1F32]">
+            <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-bold text-[#6E1F32]">
               How Can We Help?
             </h2>
 
@@ -981,7 +1171,7 @@ const Home = () => {
 
             {/* CONTACT DETAILS */}
 
-            <div className="bg-white p-8 md:p-12">
+            <div className="bg-white p-5 sm:p-8 md:p-12">
 
               <p className="text-sm uppercase tracking-[0.18em] font-bold text-[#CF3650]">
                 Contact Us
@@ -1076,11 +1266,11 @@ const Home = () => {
 
             {/* APPOINTMENT CTA */}
 
-            <div className="bg-[#FCEBED] p-8 md:p-12 flex flex-col justify-center">
+            <div className="bg-[#FCEBED] p-5 sm:p-8 md:p-12 flex flex-col justify-center">
 
               <UserRoundCheck className="w-12 h-12 text-[#CF3650]" />
 
-              <h3 className="mt-6 text-3xl font-bold text-[#6E1F32]">
+              <h3 className="mt-4 text-2xl sm:mt-6 sm:text-3xl font-bold text-[#6E1F32]">
                 Need a Consultation?
               </h3>
 

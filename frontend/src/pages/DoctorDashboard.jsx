@@ -29,6 +29,7 @@ import {
   BarChart3,
   UserCircle,
   LogOut,
+  Menu,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../utils/api";
@@ -126,6 +127,7 @@ const getServiceSeoAnalysis = (service = {}) => {
 const DoctorDashboard = () => {
   const { user, logout } = useAuth();
   const [activeSection, setActiveSection] = useState("home");
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [data, setData] = useState(null);
   const [patients, setPatients] = useState([]);
   const [showPatientForm, setShowPatientForm] = useState(false);
@@ -1044,11 +1046,47 @@ const fetchPatients = async (term = "", page = 1) => {
   const appointments = appointmentData;
 
   return (
-    <div className="min-h-screen bg-primary-light">
-      <div className="flex min-h-screen">
-        <aside className="w-56 shrink-0 bg-accent-navy text-white">
+    <div className="min-h-screen bg-primary-light overflow-x-hidden">
+      <div className="flex min-h-screen min-w-0">
+        {/* MOBILE TOP BAR */}
+        <div className="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between bg-accent-navy px-4 text-white shadow-md lg:hidden">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="h-10 w-10 shrink-0 rounded-xl bg-white p-1">
+              <img src="/logo-mark-v2.png" alt="Elite Gynaecology" className="h-full w-full object-contain" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold">Elite Gynaecology</p>
+              <p className="text-[11px] text-white/60">Doctor Workspace</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMobileSidebarOpen(true)}
+            className="rounded-xl border border-white/15 bg-white/10 p-2.5 hover:bg-white/20"
+            aria-label="Open dashboard menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* MOBILE SIDEBAR BACKDROP */}
+        {mobileSidebarOpen && (
+          <button
+            type="button"
+            aria-label="Close dashboard menu"
+            onClick={() => setMobileSidebarOpen(false)}
+            className="fixed inset-0 z-40 bg-black/45 lg:hidden"
+          />
+        )}
+
+        <aside className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-72 shrink-0 bg-accent-navy text-white shadow-2xl transition-transform duration-300 lg:sticky lg:top-0 lg:z-20 lg:w-56 lg:max-w-none lg:translate-x-0 lg:shadow-none ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
           <div className="sticky top-0 h-screen flex flex-col">
-            <div className="px-6 py-7 border-b border-white/10">
+            <div className="flex justify-end px-3 pt-3 lg:hidden">
+              <button type="button" onClick={() => setMobileSidebarOpen(false)} className="rounded-lg p-2 text-white/80 hover:bg-white/10" aria-label="Close dashboard menu">
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="px-5 pb-5 pt-2 border-b border-white/10 lg:px-6 lg:py-7">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center overflow-hidden">
   <img
@@ -1083,7 +1121,7 @@ const fetchPatients = async (term = "", page = 1) => {
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setActiveSection(item.id)}
+                    onClick={() => { setActiveSection(item.id); setMobileSidebarOpen(false); }}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition ${
                       active
                         ? "bg-white text-accent-navy shadow-sm"
@@ -1110,18 +1148,18 @@ const fetchPatients = async (term = "", page = 1) => {
           </div>
         </aside>
 
-        <main className="flex-1 min-w-0 p-8">
+        <main className="w-full min-w-0 flex-1 px-3 pb-5 pt-20 sm:px-5 lg:p-8">
           {activeSection === "home" && (
   <div className="max-w-7xl mx-auto">
 
     {/* WELCOME BANNER */}
-    <section className="relative min-h-[520px] rounded-3xl overflow-hidden shadow-lg">
+    <section className="relative min-h-[560px] sm:min-h-[520px] rounded-2xl sm:rounded-3xl overflow-hidden bg-[#33151B] shadow-lg">
 
       {/* BACKGROUND IMAGE */}
       <img
         src="/dashboard.png"
         alt="Elite Gynaecology clinic workspace"
-        className="absolute inset-0 w-full h-full object-cover"
+        className="absolute inset-0 w-full h-full object-contain object-center"
       />
 
       {/* DARK GRADIENT OVERLAY */}
@@ -1139,15 +1177,15 @@ const fetchPatients = async (term = "", page = 1) => {
 />
 
       {/* CONTENT */}
-      <div className="relative z-10 min-h-[520px] flex items-center px-10 lg:px-14">
+      <div className="relative z-10 min-h-[560px] sm:min-h-[520px] flex items-end sm:items-center px-5 pb-8 pt-24 sm:px-8 sm:py-10 lg:px-14">
 
-        <div className="max-w-xl text-white">
+        <div className="w-full max-w-xl text-white">
 
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-secondary-sage">
             Elite Gynaecology
           </p>
 
-          <h1 className="mt-4 text-4xl lg:text-5xl font-bold leading-tight">
+          <h1 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight break-words">
             Welcome,
             <span className="block mt-2">
               Prof. Dr. Ambreen Akhtar
@@ -1158,19 +1196,19 @@ const fetchPatients = async (term = "", page = 1) => {
             Doctor Workspace
           </p>
 
-          <p className="mt-5 text-base lg:text-lg leading-8 text-white/85">
+          <p className="mt-4 text-sm sm:text-base lg:text-lg leading-6 sm:leading-8 text-white/85">
             Manage your appointments, patients, medical records,
             prescriptions and clinic operations from one secure
             workspace.
           </p>
 
           {/* ACTION BUTTONS */}
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row sm:flex-wrap gap-3">
 
             <button
               type="button"
               onClick={() => setActiveSection("appointments")}
-              className="px-6 py-3 rounded-xl bg-white text-accent-navy font-semibold shadow-sm hover:bg-secondary-sage transition"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-white text-accent-navy font-semibold shadow-sm hover:bg-secondary-sage transition"
             >
               View Appointments
             </button>
@@ -1178,7 +1216,7 @@ const fetchPatients = async (term = "", page = 1) => {
             <button
               type="button"
               onClick={() => setActiveSection("patients")}
-              className="px-6 py-3 rounded-xl border border-white/40 bg-white/10 backdrop-blur-sm text-white font-semibold hover:bg-white/20 transition"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl border border-white/40 bg-white/10 backdrop-blur-sm text-white font-semibold hover:bg-white/20 transition"
             >
               Manage Patients
             </button>
@@ -1234,7 +1272,7 @@ const fetchPatients = async (term = "", page = 1) => {
 
           <div className="card">
             <div className="flex items-center justify-between mb-6"><div><p className="section-label">Revenue</p><h2 className="text-xl font-bold text-accent-navy mt-1">Verified Revenue</h2></div><DollarSign className="w-6 h-6 text-[#F5A900]" /></div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid sm:grid-cols-2 gap-4">
               <div className="rounded-2xl bg-[#FFF1F4] p-5"><p className="text-xs uppercase tracking-wider text-text-light">PKR</p><p className="mt-2 text-2xl font-bold text-[#7A2033]">Rs {stats.totalRevenuePKR || 0}</p></div>
               <div className="rounded-2xl bg-[#FFF3E6] p-5"><p className="text-xs uppercase tracking-wider text-text-light">USD</p><p className="mt-2 text-2xl font-bold text-[#7A2033]">$ {stats.totalRevenueUSD || 0}</p></div>
             </div>
@@ -2321,7 +2359,7 @@ const fetchPatients = async (term = "", page = 1) => {
         ===================================================== */}
 
         <div className="mb-7 overflow-x-auto">
-          <div className="inline-flex min-w-full sm:min-w-0 rounded-2xl border border-[#F0D8DD] bg-[#FFF7F8] p-1">
+          <div className="inline-flex min-w-max rounded-2xl border border-[#F0D8DD] bg-[#FFF7F8] p-1">
             {[
               ["content", "Content"],
               ["services", "Services"],
