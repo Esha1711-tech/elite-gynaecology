@@ -445,15 +445,9 @@ const fetchPatients = async (term = "", page = 1) => {
 
     if (
       !patientForm.name.trim() ||
-      !patientForm.email.trim() ||
       !patientForm.phone.trim()
     ) {
-      toast.error("Name, email and phone are required.");
-      return;
-    }
-
-    if (!editingPatientId && !patientForm.password) {
-      toast.error("A temporary password is required for a new patient.");
+      toast.error("Name and phone are required.");
       return;
     }
 
@@ -470,9 +464,6 @@ const fetchPatients = async (term = "", page = 1) => {
         address: patientForm.address.trim(),
       };
 
-      if (!editingPatientId) {
-        payload.password = patientForm.password;
-      }
 
       let savedPatient;
 
@@ -1546,7 +1537,7 @@ const fetchPatients = async (term = "", page = 1) => {
 
                   <div>
                     <label className="block text-sm font-semibold text-accent-navy mb-1">
-                      Email *
+                      Email <span className="font-normal text-text-light">(Optional)</span>
                     </label>
                     <input
                       name="email"
@@ -1554,7 +1545,7 @@ const fetchPatients = async (term = "", page = 1) => {
                       className="input-field"
                       value={patientForm.email}
                       onChange={handlePatientFormChange}
-                      required
+                      placeholder="Optional — can be added later for portal access"
                     />
                   </div>
 
@@ -1570,23 +1561,6 @@ const fetchPatients = async (term = "", page = 1) => {
                       required
                     />
                   </div>
-
-                  {!editingPatientId && (
-                    <div>
-                      <label className="block text-sm font-semibold text-accent-navy mb-1">
-                        Temporary Password *
-                      </label>
-                      <input
-                        name="password"
-                        type="password"
-                        className="input-field"
-                        value={patientForm.password}
-                        onChange={handlePatientFormChange}
-                        placeholder="At least 8 chars with upper/lower/number/symbol"
-                        required
-                      />
-                    </div>
-                  )}
 
                   <div>
                     <label className="block text-sm font-semibold text-accent-navy mb-1">
@@ -1808,13 +1782,12 @@ const fetchPatients = async (term = "", page = 1) => {
                         Appointments
                       </h3>
 
-                      {history.appointments
-                        .length === 0 ? (
+                      {(history.appointments || []).length === 0 ? (
                         <p className="text-sm text-text-light">
                           No appointments.
                         </p>
                       ) : (
-                        history.appointments.map(
+                        (history.appointments || []).map(
                           (a) => (
                             <div
                               key={a._id}
@@ -1854,13 +1827,12 @@ const fetchPatients = async (term = "", page = 1) => {
                         Prescriptions
                       </h3>
 
-                      {history.prescriptions
-                        .length === 0 ? (
+                      {(history.prescriptions || []).length === 0 ? (
                         <p className="text-sm text-text-light">
                           No prescriptions.
                         </p>
                       ) : (
-                        history.prescriptions.map(
+                        (history.prescriptions || []).map(
                           (p) => (
                             <div
                               key={p._id}
@@ -1874,7 +1846,7 @@ const fetchPatients = async (term = "", page = 1) => {
                                 {p.recommendations}
                               </p>
 
-                              {p.medicines.map(
+                              {(p.medicines || []).map(
                                 (m, i) => (
                                   <p
                                     key={i}
@@ -1912,13 +1884,13 @@ const fetchPatients = async (term = "", page = 1) => {
                         Medical Reports
                       </h3>
 
-                      {history.reports.length ===
+                      {(history.reports || []).length ===
                         0 ? (
                         <p className="text-sm text-text-light">
                           No reports.
                         </p>
                       ) : (
-                        history.reports.map(
+                        (history.reports || []).map(
                           (r) => (
                             <button
   key={r._id}

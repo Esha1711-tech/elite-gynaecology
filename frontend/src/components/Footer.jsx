@@ -102,26 +102,16 @@ const Footer = () => {
       </div>
 
       <div className="border-t border-[#F3D8DE] bg-[#FFF7F8]">
-         <div className="mx-auto max-w-4xl px-4 py-6 text-center sm:px-6">
-    
-    {/* <p className="mx-auto max-w-3xl text-sm leading-6 text-gray-500">
-      The information and tools on this website are for general educational
-     purposes only and are not a substitute for professional medical advice, 
-     diagnosis, or treatment. Always consult your physician or a qualified provider
-      with any questions about your health, and never disregard or delay seeking 
-      medical advice because of something you read here. In an emergency, call your 
-      respective medical helpline. Read our full medical disclaimer.
- 
-    </p> */}
+  <div className="mx-auto max-w-4xl px-4 py-2 text-center sm:px-6">
 
-    <div className="mx-auto my-4 h-px w-20 bg-[#F3D8DE]" />
+    <div className="mx-auto my-1 h-px w-20 bg-[#F3D8DE]" />
 
     <p className="text-xs font-medium text-gray-500">
       © {new Date().getFullYear()} Elite Gynaecology. All rights reserved.
     </p>
 
   </div>
-      </div>
+</div>
     </footer>
   );
 };

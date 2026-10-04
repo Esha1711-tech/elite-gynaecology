@@ -175,24 +175,19 @@ router.get(
 
 // =====================================================
 // CREATE PATIENT
-// Doctor manually creates patient
-//
-// IMPORTANT:
-// Password is passed directly to User.create().
-// Do NOT bcrypt.hash() it here if User model already
-// hashes passwords in its pre-save middleware.
+// Doctor manually creates walk-in patient
 // =====================================================
 
 router.post(
   "/",
   auth,
   authorize("doctor"),
+
   async (req, res) => {
     try {
       const {
         name,
         email,
-        password,
         phone,
         country,
         dateOfBirth,
@@ -218,6 +213,10 @@ router.post(
       const cleanAddress =
         cleanText(address);
 
+      // ---------------------------------------------
+      // REQUIRED WALK-IN INFORMATION
+      // ---------------------------------------------
+
       if (!cleanName) {
         return res
           .status(400)
@@ -228,53 +227,46 @@ router.post(
           });
       }
 
-      if (!cleanEmail) {
+      if (!cleanPhone) {
         return res
           .status(400)
           .json({
             success: false,
             message:
-              "Patient email is required.",
+              "Patient phone number is required.",
           });
       }
 
-      if (
-        !password ||
-        String(password).length <
-          6
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message:
-              "Password must be at least 6 characters.",
+      // ---------------------------------------------
+      // OPTIONAL EMAIL
+      // ---------------------------------------------
+
+      if (cleanEmail) {
+        const existingUser =
+          await User.findOne({
+            email: cleanEmail,
           });
+
+        if (existingUser) {
+          return res
+            .status(409)
+            .json({
+              success: false,
+              message:
+                "A user with this email already exists.",
+            });
+        }
       }
 
-      const existingUser =
-        await User.findOne({
-          email: cleanEmail,
-        });
+      // ---------------------------------------------
+      // DATE OF BIRTH
+      // ---------------------------------------------
 
-      if (existingUser) {
-        return res
-          .status(409)
-          .json({
-            success: false,
-            message:
-              "A user with this email already exists.",
-          });
-      }
-
-      let parsedDateOfBirth =
-        undefined;
+      let parsedDateOfBirth;
 
       if (dateOfBirth) {
         const parsedDate =
-          new Date(
-            dateOfBirth
-          );
+          new Date(dateOfBirth);
 
         if (
           Number.isNaN(
@@ -284,8 +276,7 @@ router.post(
           return res
             .status(400)
             .json({
-              success:
-                false,
+              success: false,
               message:
                 "Invalid date of birth.",
             });
@@ -295,17 +286,26 @@ router.post(
           parsedDate;
       }
 
+      // ---------------------------------------------
+      // CREATE WALK-IN PATIENT
+      // ---------------------------------------------
+
       const patientData = {
         name: cleanName,
-        email: cleanEmail,
-        password:
-          String(password),
+        phone: cleanPhone,
+
         role: "patient",
+
+        /*
+         * Walk-in patient has a medical record
+         * but does not have login access.
+         */
+        portalAccess: false,
       };
 
-      if (cleanPhone) {
-        patientData.phone =
-          cleanPhone;
+      if (cleanEmail) {
+        patientData.email =
+          cleanEmail;
       }
 
       if (cleanCountry) {
@@ -313,9 +313,7 @@ router.post(
           cleanCountry;
       }
 
-      if (
-        parsedDateOfBirth
-      ) {
+      if (parsedDateOfBirth) {
         patientData.dateOfBirth =
           parsedDateOfBirth;
       }
@@ -348,7 +346,7 @@ router.post(
           success: true,
 
           message:
-            "Patient created successfully.",
+            "Walk-in patient created successfully.",
 
           patient:
             safePatient,
@@ -360,8 +358,7 @@ router.post(
       );
 
       if (
-        error?.code ===
-        11000
+        error?.code === 11000
       ) {
         return res
           .status(409)
@@ -385,9 +382,9 @@ router.post(
           .status(400)
           .json({
             success: false,
+
             message:
-              firstError
-                ?.message ||
+              firstError?.message ||
               "Invalid patient information.",
           });
       }
