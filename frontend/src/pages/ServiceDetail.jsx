@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import api from "../utils/api";
 import {
   ArrowLeft,
@@ -11,6 +11,14 @@ import {
   ShieldCheck,
   Stethoscope,
 } from "lucide-react";
+
+const decodeDisplayText = (value = "") => {
+  if (value === null || value === undefined) return "";
+
+  const textarea = document.createElement("textarea");
+  textarea.innerHTML = String(value);
+  return textarea.value;
+};
 
 const services = {
   "gynecology-consultation": {
@@ -295,6 +303,22 @@ const services = {
 
 const ServiceDetail = () => {
   const { slug } = useParams();
+  const navigate = useNavigate();
+
+  const handleBackToServices = (event) => {
+    event.preventDefault();
+    navigate("/");
+
+    window.setTimeout(() => {
+      const servicesSection = document.getElementById("services");
+      if (servicesSection) {
+        servicesSection.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }
+    }, 120);
+  };
   const [cmsService, setCmsService] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -334,18 +358,27 @@ const ServiceDetail = () => {
     ? {
         ...detailedService,
         ...(cmsService || {}),
-        title: cmsService?.title || detailedService.title,
+        title: decodeDisplayText(cmsService?.title || detailedService.title),
         image: cmsService?.image || detailedService.image,
-        overview: detailedService.overview,
-        subtitle: detailedService.subtitle,
-        includes: detailedService.includes,
-        faqs: detailedService.faqs,
+        imageAlt: decodeDisplayText(
+          cmsService?.imageAlt || detailedService.imageAlt || cmsService?.title || detailedService.title
+        ),
+        overview: decodeDisplayText(detailedService.overview),
+        subtitle: decodeDisplayText(detailedService.subtitle),
+        includes: detailedService.includes.map((item) => decodeDisplayText(item)),
+        faqs: detailedService.faqs.map((faq) => ({
+          ...faq,
+          question: decodeDisplayText(faq.question),
+          answer: decodeDisplayText(faq.answer),
+        })),
       }
     : cmsService
       ? {
           ...cmsService,
-          subtitle: cmsService.description || "",
-          overview: cmsService.description || "",
+          title: decodeDisplayText(cmsService.title),
+          imageAlt: decodeDisplayText(cmsService.imageAlt || cmsService.title),
+          subtitle: decodeDisplayText(cmsService.description || ""),
+          overview: decodeDisplayText(cmsService.description || ""),
           includes: [],
           faqs: [],
         }
@@ -505,6 +538,7 @@ const ServiceDetail = () => {
           </p>
           <Link
   to="/#services"
+              onClick={handleBackToServices}
   className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-white transition hover:text-[#F7B7C2]"
 >
   <ArrowLeft className="h-4 w-4" />
@@ -517,49 +551,64 @@ const ServiceDetail = () => {
 
   return (
     <main className="bg-white text-[#6E1F32]">
-      {/* SERVICE BANNER — same image as service card */}
-      <section className="relative min-h-[420px] overflow-hidden">
+      {/* SERVICE BANNER — mobile-first responsive image */}
+      <section className="relative overflow-hidden bg-[#33151B]">
+        {/*
+          MOBILE HEIGHT SIZER
+          The banner follows the service image aspect ratio on phones so the
+          image is not aggressively cropped. Hidden on md+ where a fixed
+          banner height gives a cleaner desktop/tablet layout.
+        */}
+        <img
+          src={service.image}
+          alt=""
+          aria-hidden="true"
+          className="invisible block h-auto w-full md:hidden"
+        />
+
+        {/* Main service image */}
         <img
           src={service.image}
           alt={service.imageAlt || service.title}
-          className="absolute inset-0 h-full w-full object-cover object-center"
+          className="absolute inset-0 h-full w-full object-contain object-center md:object-cover"
         />
 
-        {/* Stronger left-side overlay so text stays readable */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/55 to-black/20" />
+        {/* Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/20 md:from-black/85 md:via-black/55 md:to-black/20" />
 
-        {/* Content starts from the top with no extra top padding */}
-        <div className="relative z-10 mx-auto min-h-[420px] max-w-7xl px-4 pt-0 pb-12 sm:px-6 lg:px-8">
+        {/* Content */}
+        <div className="absolute inset-0 z-10 mx-auto flex w-full max-w-7xl flex-col px-4 pb-5 pt-1 sm:px-6 sm:pb-7 md:relative md:min-h-[460px] md:px-6 md:pb-12 md:pt-1 lg:min-h-[500px] lg:px-8">
           <div className="max-w-3xl text-white">
 
-            {/* BACK TO SERVICES */}
+            {/* BACK TO SERVICES — reduced top spacing */}
             <Link
               to="/#services"
-              className="mt-[20px] inline-flex items-center gap-2 pt-0 mt-0 text-sm font-semibold text-white transition hover:text-[#F7B7C2]"
+              onClick={handleBackToServices}
+              className="inline-flex items-center gap-2 pt-1 text-xs font-semibold text-white transition hover:text-[#F7B7C2] sm:text-sm md:pt-2"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to Services
             </Link>
 
-            <div className="pt-10 md:pt-12">
-              <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#FFC1CC] drop-shadow-md">
+            <div className="pt-4 sm:pt-6 md:pt-10 lg:pt-12">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#FFC1CC] drop-shadow-md sm:text-xs md:text-sm md:tracking-[0.18em]">
                 Elite Gynaecology Lahore
               </p>
 
-              <h1 className="mt-4 max-w-4xl text-4xl font-extrabold leading-tight text-white drop-shadow-lg md:text-5xl lg:text-6xl">
+              <h1 className="mt-2 max-w-4xl text-2xl font-extrabold leading-tight text-white drop-shadow-lg sm:text-3xl md:mt-4 md:text-5xl lg:text-6xl">
                 {service.title}
               </h1>
 
-              <p className="mt-5 max-w-2xl text-base font-medium leading-7 text-white drop-shadow-md md:text-xl md:leading-8">
+              <p className="mt-2 max-w-2xl text-xs font-medium leading-5 text-white drop-shadow-md sm:text-sm sm:leading-6 md:mt-5 md:text-xl md:leading-8">
                 {service.subtitle}
               </p>
 
-              <div className="mt-8 flex flex-wrap gap-4">
+              <div className="mt-4 flex flex-wrap gap-2 sm:gap-3 md:mt-8 md:gap-4">
                 <Link
                   to="/appointments"
                   className="appointment-btn"
                 >
-                  <Calendar className="h-5 w-5" />
+                  <Calendar className="h-4 w-4 md:h-5 md:w-5" />
                   Book Appointment
                 </Link>
 
@@ -567,18 +616,9 @@ const ServiceDetail = () => {
                   href="https://wa.me/923180082848"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className=" inline-flex items-center gap-2
-    rounded-full
-    border border-white/70
-    bg-black/20
-    px-5 py-2.5
-    text-sm font-semibold text-white
-    backdrop-blur-sm
-    transition-all duration-300
-    hover:bg-[#CF3650]
-    hover:border-[#CF3650]"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-black/20 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:border-[#CF3650] hover:bg-[#CF3650] sm:text-sm md:px-5 md:py-2.5"
                 >
-                  <Phone className="h-5 w-5" />
+                  <Phone className="h-4 w-4 md:h-5 md:w-5" />
                   Call Us
                 </a>
               </div>

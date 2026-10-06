@@ -17,7 +17,7 @@ const Login = () => {
     try {
       const user = await login(formData.email, formData.password, formData.role)
       toast.success('Login successful!')
-      navigate(user.role === 'doctor' ? '/admin' : '/dashboard')
+      navigate(user.role === 'doctor' ? '/admin' : '/dashboard', { replace: true })
     } catch (err) {
       toast.error(err.response?.data?.message || 'Login failed')
     } finally {

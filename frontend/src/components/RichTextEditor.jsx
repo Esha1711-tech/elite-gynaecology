@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { useEffect, useRef, useState } from "react";
+import { EditorContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
@@ -7,6 +7,7 @@ import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Extension } from "@tiptap/core";
+import api from "../utils/api";
 
 // =====================================================
 // CUSTOM FONT SIZE EXTENSION
@@ -73,10 +74,72 @@ const FontSize = Extension.create({
 });
 
 // =====================================================
+// IMAGE NODE VIEW WITH REMOVE BUTTON
+// =====================================================
+
+const ImageWithRemove = ({ node, deleteNode, selected }) => {
+  return (
+    <NodeViewWrapper className="my-5">
+      <div
+        className={`relative inline-block max-w-full rounded-xl ${
+          selected ? "ring-2 ring-accent-navy ring-offset-2" : ""
+        }`}
+      >
+        <img
+          src={node.attrs.src}
+          alt={node.attrs.alt || ""}
+          title={node.attrs.title || ""}
+          className="block max-w-full h-auto rounded-xl"
+          draggable="false"
+        />
+
+        <button
+          type="button"
+          title="Remove image"
+          aria-label="Remove image"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            deleteNode();
+          }}
+          className="absolute -top-3 -right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-lg font-bold leading-none text-white shadow-md transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+        >
+          ×
+        </button>
+      </div>
+    </NodeViewWrapper>
+  );
+};
+
+const RemovableImage = Image.extend({
+  addNodeView() {
+    return ReactNodeViewRenderer(ImageWithRemove);
+  },
+});
+
+// =====================================================
 // RICH TEXT EDITOR
 // =====================================================
 
 const RichTextEditor = ({ value, onChange }) => {
+  const imageInputRef = useRef(null);
+  const imageInsertPositionRef = useRef(null);
+  const [imageUploading, setImageUploading] = useState(false);
+
+  const getMediaUrl = (url) => {
+    if (!url) return "";
+    if (/^https?:\/\//i.test(url)) return url;
+
+    const apiBase =
+      api.defaults.baseURL ||
+      import.meta.env.VITE_API_URL ||
+      "http://localhost:5000/api";
+
+    const backendOrigin = apiBase.replace(/\/api\/?$/, "");
+    return `${backendOrigin}${url.startsWith("/") ? url : `/${url}`}`;
+  };
+
   const editor = useEditor({
     extensions: [
       // Disable these here because we add/configure them separately below
@@ -97,7 +160,7 @@ const RichTextEditor = ({ value, onChange }) => {
 
       FontSize,
 
-      Image.configure({
+      RemovableImage.configure({
         inline: false,
         allowBase64: true,
       }),
@@ -151,20 +214,121 @@ const RichTextEditor = ({ value, onChange }) => {
   // =====================================================
 
   const addImage = () => {
-    const url = window.prompt(
-      "Enter image URL:"
-    );
+    imageInsertPositionRef.current =
+      editor.state.selection.from;
 
-    if (!url || !url.trim()) {
+    imageInputRef.current?.click();
+  };
+
+  const addImageByUrl = () => {
+    const url = window.prompt("Enter image URL:");
+
+    if (url === null) return;
+
+    const cleanUrl = url.trim();
+
+    if (!cleanUrl) {
+      window.alert("Please enter an image URL.");
       return;
     }
 
     editor
       .chain()
       .focus()
-      .setImage({
-        src: url.trim(),
-      })
+      .setImage({ src: cleanUrl })
+      .run();
+  };
+
+  const handleEditorImageUpload = async (e) => {
+    const input = e.target;
+    const file = input.files?.[0];
+
+    if (!file) return;
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      window.alert(
+        "Please select a JPG, PNG or WEBP image."
+      );
+      input.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      window.alert(
+        "Image size must not exceed 5 MB."
+      );
+      input.value = "";
+      return;
+    }
+
+    setImageUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const res = await api.post(
+        "/blog/upload-image",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      const imageUrl = res.data?.imageUrl;
+
+      if (!imageUrl) {
+        throw new Error(
+          "Image URL was not returned by the server."
+        );
+      }
+
+      const position =
+        imageInsertPositionRef.current ??
+        editor.state.selection.from;
+
+      editor
+        .chain()
+        .focus()
+        .insertContentAt(position, {
+          type: "image",
+          attrs: {
+            src: getMediaUrl(imageUrl),
+          },
+        })
+        .run();
+    } catch (error) {
+      console.error(
+        "Rich text image upload error:",
+        error
+      );
+
+      window.alert(
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to upload image."
+      );
+    } finally {
+      setImageUploading(false);
+      imageInsertPositionRef.current = null;
+      input.value = "";
+    }
+  };
+
+  const applyInlineHeading = (fontSize) => {
+    editor
+      .chain()
+      .focus()
+      .setFontSize(fontSize)
+      .setBold()
       .run();
   };
 
@@ -289,70 +453,52 @@ const RichTextEditor = ({ value, onChange }) => {
           <u>U</u>
         </button>
 
-        {/* H1 */}
+        {/* H1 - selected text only */}
 
         <button
           type="button"
-          title="Heading 1"
+          title="Heading 1 (selected text)"
           className={btn(
-            editor.isActive("heading", {
-              level: 1,
-            })
+            editor.isActive("textStyle", {
+              fontSize: "36px",
+            }) && editor.isActive("bold")
           )}
           onClick={() =>
-            editor
-              .chain()
-              .focus()
-              .toggleHeading({
-                level: 1,
-              })
-              .run()
+            applyInlineHeading("36px")
           }
         >
           H1
         </button>
 
-        {/* H2 */}
+        {/* H2 - selected text only */}
 
         <button
           type="button"
-          title="Heading 2"
+          title="Heading 2 (selected text)"
           className={btn(
-            editor.isActive("heading", {
-              level: 2,
-            })
+            editor.isActive("textStyle", {
+              fontSize: "28px",
+            }) && editor.isActive("bold")
           )}
           onClick={() =>
-            editor
-              .chain()
-              .focus()
-              .toggleHeading({
-                level: 2,
-              })
-              .run()
+            applyInlineHeading("28px")
           }
         >
           H2
         </button>
 
-        {/* H3 */}
+        {/* H3 - selected text only */}
 
         <button
           type="button"
-          title="Heading 3"
+          title="Heading 3 (selected text)"
           className={btn(
-            editor.isActive("heading", {
-              level: 3,
-            })
+            editor.isActive("textStyle", {
+              fontSize: "22px",
+            }) && editor.isActive("bold")
           )}
           onClick={() =>
-            editor
-              .chain()
-              .focus()
-              .toggleHeading({
-                level: 3,
-              })
-              .run()
+            applyInlineHeading("22px")
           }
         >
           H3
@@ -532,13 +678,32 @@ const RichTextEditor = ({ value, onChange }) => {
             IMAGE
         ================================================= */}
 
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+          onChange={handleEditorImageUpload}
+          className="hidden"
+        />
+
         <button
           type="button"
-          title="Add Image"
-          className={btn()}
+          title="Upload Image from Device"
+          className={`${btn()} disabled:opacity-50 disabled:cursor-not-allowed`}
           onClick={addImage}
+          disabled={imageUploading}
         >
-          Image
+          {imageUploading ? "Uploading..." : "Upload Image"}
+        </button>
+
+        <button
+          type="button"
+          title="Add Image by URL"
+          className={btn()}
+          onClick={addImageByUrl}
+          disabled={imageUploading}
+        >
+          Image URL
         </button>
 
         {/* =================================================

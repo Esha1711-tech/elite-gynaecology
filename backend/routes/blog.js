@@ -1,5 +1,8 @@
 const express = require("express");
 const router = express.Router();
+const path = require("path");
+const fs = require("fs");
+const { blogImageUpload } = require("../middleware/upload");
 
 const Blog = require("../models/Blog");
 const {
@@ -136,6 +139,7 @@ const sanitizeSeo = (seo = {}) => {
         : "Article",
   };
 };
+
 
 // =====================================================
 // PUBLIC — GET PUBLISHED BLOGS
@@ -295,6 +299,78 @@ router.get(
     }
   }
 );
+
+// =====================================================
+// BLOG IMAGE UPLOAD
+// Doctor only
+// =====================================================
+
+router.post(
+  "/upload-image",
+  auth,
+  authorize("doctor"),
+  (req, res) => {
+    blogImageUpload.single("image")(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({
+          success: false,
+          message: err.message || "Unable to upload blog image.",
+        });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "Please select an image.",
+        });
+      }
+
+      const imageUrl = `/api/blog/images/${req.file.filename}`;
+
+      return res.status(201).json({
+        success: true,
+        message: "Blog image uploaded successfully.",
+        imageUrl,
+      });
+    });
+  }
+);
+
+
+// =====================================================
+// PUBLIC BLOG IMAGE
+// =====================================================
+
+router.get("/images/:filename", (req, res) => {
+  try {
+    // Prevent directory traversal
+    const filename = path.basename(req.params.filename);
+
+    const imagePath = path.join(
+      __dirname,
+      "..",
+      "uploads",
+      "blogs",
+      filename
+    );
+
+    if (!fs.existsSync(imagePath)) {
+      return res.status(404).json({
+        success: false,
+        message: "Blog image not found.",
+      });
+    }
+
+    return res.sendFile(imagePath);
+  } catch (error) {
+    console.error("Blog image error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load blog image.",
+    });
+  }
+});
 
 // =====================================================
 // PUBLIC — GET SINGLE PUBLISHED BLOG

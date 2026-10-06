@@ -35,11 +35,11 @@ import toast from "react-hot-toast";
 import api from "../utils/api";
 import { useAuth } from "../context/AuthContext";
 
-// const API_ORIGIN =
-//   import.meta.env.VITE_API_ORIGIN || "http://localhost:5000";
+const API_ORIGIN =
+  import.meta.env.VITE_API_ORIGIN || "http://localhost:5000";
 
-// const fileUrl = (url) =>
-//   url?.startsWith("http") ? url : `${API_ORIGIN}${url}`;
+const fileUrl = (url) =>
+  url?.startsWith("http") ? url : `${API_ORIGIN}${url}`;
 
 const emptyPrescription = {
   diagnosis: "",
@@ -187,6 +187,7 @@ const [patientPagination, setPatientPagination] = useState({
   });
   const blogFormRef = useRef(null);
   const [blogSaving, setBlogSaving] = useState(false);
+  const [blogImageUploading, setBlogImageUploading] = useState(false);
 
   // =========================
   // WEBSITE MANAGEMENT STATES
@@ -221,6 +222,24 @@ const [websiteSeoTab, setWebsiteSeoTab] = useState("general");
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "profile", label: "Profile", icon: UserCircle },
   ];
+
+  useEffect(() => {
+    window.history.pushState(
+      { doctorDashboard: true },
+      "",
+      window.location.href,
+    );
+
+    const handleBrowserBack = () => {
+      window.location.replace("/");
+    };
+
+    window.addEventListener("popstate", handleBrowserBack);
+
+    return () => {
+      window.removeEventListener("popstate", handleBrowserBack);
+    };
+  }, []);
 
   const handleDoctorLogout = async () => {
     await logout();
@@ -753,6 +772,69 @@ const fetchPatients = async (term = "", page = 1) => {
     });
 
     setShowBlogForm(true);
+  };
+
+  const handleBlogImageUpload = async (e) => {
+    const input = e.target;
+    const file = input.files?.[0];
+
+    if (!file) return;
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Please select a JPG, PNG or WEBP image.");
+      input.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must not exceed 5 MB.");
+      input.value = "";
+      return;
+    }
+
+    setBlogImageUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const res = await api.post(
+        "/blog/upload-image",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      if (!res.data?.imageUrl) {
+        throw new Error("Image URL was not returned by the server.");
+      }
+
+      setBlogForm((prev) => ({
+        ...prev,
+        featuredImage: res.data.imageUrl,
+      }));
+
+      toast.success("Image uploaded successfully.");
+    } catch (err) {
+      console.error("Blog image upload error:", err);
+      toast.error(
+        err.response?.data?.message ||
+          err.message ||
+          "Unable to upload image.",
+      );
+    } finally {
+      setBlogImageUploading(false);
+      input.value = "";
+    }
   };
 
   const saveBlog = async (e) => {
@@ -4862,16 +4944,32 @@ const fetchPatients = async (term = "", page = 1) => {
 
                   <div>
                     <label className="block text-sm font-semibold text-accent-navy mb-1">
-                      Featured Image URL
+                      Featured Image
                     </label>
+
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                      onChange={handleBlogImageUpload}
+                      disabled={blogImageUploading}
+                      className="block w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-accent-navy hover:file:bg-pink-100 disabled:opacity-60"
+                    />
+
+                    {blogImageUploading && (
+                      <p className="text-xs text-text-light mt-2">
+                        Uploading image...
+                      </p>
+                    )}
+
+                    <p className="text-xs text-text-light mt-2 mb-2">
+                      JPG, PNG or WEBP — maximum 5 MB
+                    </p>
 
                     <input
                       name="featuredImage"
                       className="input-field"
-                      placeholder="https://example.com/image.jpg"
-                      value={
-                        blogForm.featuredImage
-                      }
+                      placeholder="Or paste image URL"
+                      value={blogForm.featuredImage}
                       onChange={handleBlogChange}
                     />
                   </div>
@@ -5035,9 +5133,9 @@ const fetchPatients = async (term = "", page = 1) => {
                     </p>
 
                     <img
-                      src={
+                      src={fileUrl(
                         blogForm.featuredImage
-                      }
+                      )}
                       alt="Blog preview"
                       className="w-full max-w-md h-52 object-cover rounded-xl border border-slate-200"
                       onError={(e) => {
@@ -5054,7 +5152,7 @@ const fetchPatients = async (term = "", page = 1) => {
 
                   <button
                     type="submit"
-                    disabled={blogSaving}
+                    disabled={blogSaving || blogImageUploading}
                     className="btn-primary inline-flex items-center gap-2 disabled:opacity-60"
                   >
                     {editingBlogId ? (

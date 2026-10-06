@@ -274,8 +274,22 @@ const Home = () => {
       {/* =====================================================
     HERO / AUTO SLIDER
 ====================================================== */}
-<section id="home" className="relative overflow-hidden bg-black">
-  <div className="relative h-[540px] sm:h-[580px] md:min-h-[620px] lg:min-h-[660px]">
+<section id="home" className="relative overflow-hidden bg-black md:bg-black">
+  <div className="relative md:min-h-[620px] lg:min-h-[660px]">
+
+    {/*
+      MOBILE HEIGHT SIZER
+      -------------------
+      On small screens the hero follows the current image's natural aspect
+      ratio. This removes the empty black bands without cropping or stretching.
+      Hidden from md+ so the existing desktop hero height stays unchanged.
+    */}
+    <img
+      src={heroSlides[currentSlide]?.image}
+      alt=""
+      aria-hidden="true"
+      className="invisible block h-auto w-full md:hidden"
+    />
 
     {/* SLIDER IMAGES */}
     {heroSlides.map((slide, index) => (
@@ -293,7 +307,7 @@ const Home = () => {
           className="
             absolute inset-0
             h-full w-full
-            object-contain object-center
+            object-cover object-center
             md:object-cover
           "
         />
@@ -346,12 +360,12 @@ const Home = () => {
         {/* HEADING */}
         <h1
           className="
-            !text-[27px]
-            !leading-[1.08]
+            !text-[22px]
+            !leading-[1.05]
             font-extrabold
             tracking-tight
             text-white
-            sm:!text-[36px]
+            sm:!text-[30px]
             md:!text-[52px]
             lg:!text-[64px]
           "
@@ -368,12 +382,12 @@ const Home = () => {
         {/* DESCRIPTION */}
         <p
           className="
-            mt-3
+            mt-2
             max-w-[95%]
-            !text-[13px]
-            !leading-[1.45]
+            !text-[11px]
+            !leading-[1.35]
             text-white/90
-            sm:!text-[15px]
+            sm:!text-[13px]
             md:mt-5
             md:max-w-2xl
             md:!text-[20px]
@@ -392,7 +406,7 @@ const Home = () => {
         {/* BUTTONS */}
         <div
           className="
-            mt-4
+            mt-3
             flex
             w-full
             flex-col
@@ -409,7 +423,7 @@ const Home = () => {
             rel="noopener noreferrer"
             className="
               inline-flex
-              h-11
+              h-9
               w-full
               items-center
               justify-center
@@ -439,7 +453,7 @@ const Home = () => {
             to={primaryAction.to}
             className="
               inline-flex
-              h-11
+              h-9
               w-full
               items-center
               justify-center
@@ -747,11 +761,11 @@ const Home = () => {
     className="group overflow-hidden rounded-2xl border border-[#F0D8DD] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#CF3650]/40 hover:shadow-xl"
   >
     {/* IMAGE */}
-    <div className="h-40 overflow-hidden bg-white sm:h-48">
+    <div className="h-48 overflow-hidden">
       <img
         src={image}
         alt={imageAlt || title}
-        className="h-full w-full object-contain p-1 transition-transform duration-500 group-hover:scale-[1.02] sm:p-2"
+        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
       />
     </div>
 
